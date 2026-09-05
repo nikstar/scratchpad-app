@@ -8,6 +8,8 @@ A Dock or Finder reopen brings existing visible notes forward. If every note is 
 
 The title-bar plus is a borderless `NSButton` in a trailing `NSTitlebarAccessoryViewController`, fitting inside the utility panel's original title-bar height. It accepts clicks on inactive notes and routes creation through the coordinator. Private APIs are permitted for this personal app, but this control uses public AppKit APIs.
 
+Plus-button creation carries the source note's identity explicitly, so pressing it on an inactive panel still cascades from that panel. Keyboard/menu creation uses the key note or most recently focused visible note. Placement uses the source window's current top-left corner and display with a 22-point cascade offset, wrapping at display edges. The default note size is unchanged. With no visible source, the first note is centered on the pointer's display. Title-bar controls use the system secondary text color and dim to 45% opacity while their window or the app is inactive, without disabling interaction. View opacity is applied explicitly because symbol tinting in the title bar does not reliably preserve a semantic color's alpha.
+
 `NoteCoordinator` owns the session model and one `NoteWindowController` per note, including hidden notes. It handles creation, visibility, deletion, stacking, and display changes. `NotePanel` controls native window behavior; `NoteWindowController` configures the plain `NSTextView` and translates editing/window notifications into model changes. UI details can be replaced without changing the storage model.
 
 ## Restoration contract

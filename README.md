@@ -33,7 +33,7 @@ The script locates the project relative to itself, builds Release, verifies its 
 
 - First launch opens one blank note. Subsequent launches restore the existing workspace, including an intentionally empty workspace.
 - Notes use small, resizable `NSPanel` windows that remain visible when another app is active. They appear across Spaces, including alongside full-screen apps.
-- A small **+** in each note's title bar creates another note without enlarging the panel.
+- A small **+** in each note's title bar creates another note cascaded from that window. Keyboard/menu creation cascades from the current note. The control dims with an inactive window while remaining clickable.
 - Scratchpad appears in the Dock and app switcher while running. A Dock click reveals the current workspace, reopens the most recent hidden note when necessary, or creates a note if none exist.
 - The menu bar icon provides New Note, Show All, Hide All, individual note reopening, deletion, and Quit. Checkmarks identify visible notes.
 - Closing a window or pressing **⌘W** hides its note. Deletion is a separate action; deleting nonempty text requires confirmation.

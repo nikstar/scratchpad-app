@@ -28,6 +28,7 @@ Rich text, Markdown rendering, syntax highlighting, document saving/export, sync
 - Start with a native menu as the management UI.
 - Show the app in the Dock while running. Clicking it brings the workspace forward or reopens the most recent note when all notes are hidden.
 - Keep a small plus button at the trailing edge of each title bar to create another note without adding a toolbar or increasing the panel height.
+- New notes cascade 22 points down and right from the note whose plus was pressed, or from the current note for keyboard/menu creation. Title-bar controls dim with inactive windows and remain clickable.
 - Default to a 280 × 220 point outer window, resizable down to a 160 × 90 point content area.
 - Panels float above ordinary windows and are available across Spaces. There is no per-Space assignment in this version.
 - First launch creates one blank note. An intentionally empty or entirely hidden workspace stays that way after relaunch.

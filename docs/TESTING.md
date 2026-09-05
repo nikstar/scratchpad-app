@@ -28,6 +28,8 @@ Run the shared Scratchpad scheme's tests with Product → Test or the `xcodebuil
 11. With a spare display, move a note there, quit, disconnect the display, and relaunch. Verify it is reachable. Reconnect and verify preferred placement where possible.
 12. Click the Dock icon with visible, entirely hidden, and empty workspaces. It should reveal existing notes first and create one only for an empty workspace.
 13. Run `scripts/install.sh` from outside the repository, then repeat with the installed app running. Confirm graceful quit, successful replacement, valid sandbox entitlements, and unchanged saved notes.
+14. Move and resize a note away from the screen center. Press its plus while another note is current, then use ⌘N: each new title bar should be offset 22 points down and right from its source. Near screen edges, verify the new note remains reachable on that display.
+15. Switch between notes and then to another app. The title-bar plus should dim with the inactive title, remain clickable, and retain its trailing inset at minimum window size.
 
 Tests establish data and local AppKit behavior. Multi-display hardware changes, full-screen Spaces, system shutdown, and power loss still require dedicated manual checks.
 
@@ -45,3 +47,9 @@ Tests establish data and local AppKit behavior. Multi-display hardware changes, 
 - Inspected the installed Release build's title bar and clicked the plus to create a note. Confirmed the running app uses the regular, Dock-visible activation policy.
 - Ran the release installer from outside the repository and repeated installation with the installed app running. Its normal quit and replacement completed successfully; the sandbox session's SHA-256 hash was unchanged across the final reinstall.
 - Verified the installed code signature and the explicit app-sandbox entitlement. Development-only signing entitlements are absent from the installed release.
+
+## Cascading and inactive controls — 2026-09-05
+
+- All 23 XCTest cases passed. Added regression coverage for creating from an inactive source note versus the current note, cascading from resized windows on displays with negative coordinates, and wrapping at screen edges.
+- Moved the plus control 3 points farther inward. It follows window focus and app activation with explicit view opacity over the system text color, while retaining first-click behavior.
+- Rebuilt and installed the Release app. Visually verified the plus is dim with an inactive title and returns to normal contrast when the note is focused.

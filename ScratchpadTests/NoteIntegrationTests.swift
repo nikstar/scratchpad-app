@@ -147,4 +147,30 @@ final class NoteIntegrationTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(coordinator.controllers.values.first?.window).isVisible)
         try coordinator.flush()
     }
+
+    func testPlusUsesItsOwnWindowAndNewNoteCommandUsesCurrentWindow() throws {
+        let (coordinator, _) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        let sourceID = try XCTUnwrap(coordinator.session.notes.first?.id)
+        let source = try XCTUnwrap(coordinator.controllers[sourceID]?.window as? NotePanel)
+        let screen = try XCTUnwrap(source.screen)
+        source.setFrame(CGRect(x: screen.visibleFrame.minX + 70, y: screen.visibleFrame.maxY - 400,
+                               width: 330, height: 280), display: true)
+        coordinator.createNote()
+        let current = try XCTUnwrap(coordinator.controllers[try XCTUnwrap(coordinator.session.activeNoteID)]?.window)
+        XCTAssertFalse(source.isKeyWindow)
+
+        // Press plus in an older, inactive note while another note is current.
+        source.newNoteButton.performClick(nil)
+        let fromPlus = try XCTUnwrap(coordinator.controllers[try XCTUnwrap(coordinator.session.activeNoteID)]?.window)
+        XCTAssertEqual(fromPlus.frame.minX, source.frame.minX + 22)
+        XCTAssertEqual(fromPlus.frame.maxY, source.frame.maxY - 22)
+        XCTAssertNotEqual(fromPlus.frame.minX, current.frame.minX + 22)
+
+        coordinator.createNote()
+        let fromCommand = try XCTUnwrap(coordinator.controllers[try XCTUnwrap(coordinator.session.activeNoteID)]?.window)
+        XCTAssertEqual(fromCommand.frame.minX, fromPlus.frame.minX + 22)
+        XCTAssertEqual(fromCommand.frame.maxY, fromPlus.frame.maxY - 22)
+        try coordinator.flush()
+    }
 }

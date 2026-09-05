@@ -28,6 +28,26 @@ final class NotePanel: NSPanel {
         backgroundColor = .textBackgroundColor
         standardWindowButton(.zoomButton)?.isHidden = true
         installTitlebarControls()
+        for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification] {
+            NotificationCenter.default.addObserver(self, selector: #selector(updateControlAppearance(_:)), name: name, object: nil)
+        }
+        updateControlAppearance()
+    }
+
+    override func becomeKey() {
+        super.becomeKey()
+        updateControlAppearance()
+    }
+
+    override func resignKey() {
+        super.resignKey()
+        updateControlAppearance()
+    }
+
+    @objc private func updateControlAppearance(_ notification: Notification? = nil) {
+        // NSButton's symbol tint does not reliably preserve a semantic color's
+        // alpha in title-bar vibrancy. Dim the view itself to match inactive titles.
+        newNoteButton.alphaValue = isKeyWindow && NSApp.isActive ? 1 : 0.45
     }
 
     private func installTitlebarControls() {
@@ -35,7 +55,7 @@ final class NotePanel: NSPanel {
         controls.layoutAttribute = .trailing
         // A trailing accessory stays in the utility panel's existing title bar.
         // A bottom accessory or toolbar would add another row of chrome.
-        controls.view = NSView(frame: NSRect(x: 0, y: 0, width: 24, height: 16))
+        controls.view = NSView(frame: NSRect(x: 0, y: 0, width: 27, height: 16))
 
         newNoteButton.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New Note")
         newNoteButton.symbolConfiguration = .init(pointSize: 10, weight: .medium)
@@ -54,7 +74,7 @@ final class NotePanel: NSPanel {
         NSLayoutConstraint.activate([
             newNoteButton.widthAnchor.constraint(equalToConstant: 18),
             newNoteButton.heightAnchor.constraint(equalToConstant: 16),
-            newNoteButton.trailingAnchor.constraint(equalTo: controls.view.trailingAnchor, constant: -3),
+            newNoteButton.trailingAnchor.constraint(equalTo: controls.view.trailingAnchor, constant: -6),
             newNoteButton.centerYAnchor.constraint(equalTo: controls.view.centerYAnchor)
         ])
         addTitlebarAccessoryViewController(controls)

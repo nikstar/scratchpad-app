@@ -41,14 +41,20 @@ final class NoteCoordinator: NSObject {
     }
 
     @objc func createNote(_ sender: Any? = nil) {
-        let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
-        let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1200, height: 800)
-        let offset = CGFloat(session.notes.filter(\.isVisible).count % 8) * 22
-        let placement = WindowPlacement(
-            frame: CGRect(x: visible.midX - 140 + offset, y: visible.midY - 110 - offset, width: 280, height: 220),
-            displayID: screen?.displayID,
-            displayVisibleFrame: visible
+        let current = controllers.values.first { $0.window?.isKeyWindow == true }?.window
+            ?? session.activeNoteID.flatMap { controllers[$0]?.window }.flatMap { $0.isVisible ? $0 : nil }
+            ?? session.windowOrder.reversed().compactMap { controllers[$0]?.window }.first { $0.isVisible }
+        createNote(relativeTo: current)
+    }
+
+    private func createNote(relativeTo source: NSWindow?) {
+        let screen = source?.screen
+            ?? NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
+        let display = Display(
+            id: screen?.displayID ?? 0,
+            visibleFrame: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1200, height: 800)
         )
+        let placement = WindowPlacement.newNote(relativeTo: source?.frame, on: display)
         let note = Note(placement: placement)
         session.notes.append(note)
         session.windowOrder.append(note.id)
@@ -191,7 +197,10 @@ final class NoteCoordinator: NSObject {
             self.scheduleStateSave()
         }
         controller.onHide = { [weak self] in self?.hideNote(id) }
-        controller.onNewNote = { [weak self] in self?.createNote() }
+        controller.onNewNote = { [weak self] in
+            guard let self else { return }
+            self.createNote(relativeTo: self.controllers[id]?.window)
+        }
         controllers[id] = controller
         return controller
     }
