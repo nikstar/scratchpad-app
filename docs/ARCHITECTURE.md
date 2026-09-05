@@ -2,7 +2,11 @@
 
 ## Application lifecycle
 
-`ScratchpadApplication` explicitly constructs `NSApplication` and its delegate. `LSUIElement` and the accessory activation policy keep the app in the menu bar. `AppDelegate` owns the note coordinator and status item, installs the responder-chain menus, and flushes storage before termination.
+`ScratchpadApplication` explicitly constructs `NSApplication` and its delegate. The regular activation policy and `LSUIElement = NO` give the running app a Dock icon and an entry in the app switcher. The menu bar status item remains available. `AppDelegate` owns the note coordinator and status item, installs the responder-chain menus, and flushes storage before termination.
+
+A Dock or Finder reopen brings existing visible notes forward. If every note is hidden, it reopens the most recently active one; if the workspace is empty, it creates a blank note. Normal startup still restores each note's saved visibility.
+
+The title-bar plus is a borderless `NSButton` in a trailing `NSTitlebarAccessoryViewController`, fitting inside the utility panel's original title-bar height. It accepts clicks on inactive notes and routes creation through the coordinator. Private APIs are permitted for this personal app, but this control uses public AppKit APIs.
 
 `NoteCoordinator` owns the session model and one `NoteWindowController` per note, including hidden notes. It handles creation, visibility, deletion, stacking, and display changes. `NotePanel` controls native window behavior; `NoteWindowController` configures the plain `NSTextView` and translates editing/window notifications into model changes. UI details can be replaced without changing the storage model.
 
@@ -26,6 +30,8 @@ Hidden windows are kept alive for cheap reopening and undo continuity during the
 `SessionStore` serializes immutable snapshots on a private dispatch queue. Each text change is enqueued immediately. Window movement, resizing, selection, and scrolling use a 150 ms debounce in common run-loop modes. Deactivation enqueues a snapshot; a normal quit drains the queue and synchronously writes the final editor state.
 
 `SessionFile` writes `session.json` by atomic replacement and keeps the previous validated snapshot in `session.backup.json`. Both files live in the app's private Application Support directory. No user-selected file access or network capability is required.
+
+`Scratchpad.entitlements` explicitly preserves the app sandbox for both development and locally installed releases. The installer verifies the signed sandbox entitlement before replacing the app, so signing changes cannot silently switch notes to a different Application Support directory. Release installation disables Xcode's additional development entitlements.
 
 An interrupted write leaves a complete old or new snapshot. Abrupt termination can still lose an in-flight text change or the last 150 ms of geometry/editor changes; zero loss under forced termination or power failure is not guaranteed. Normal termination flushes all pending changes.
 

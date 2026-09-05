@@ -3,6 +3,7 @@
 Read `docs/VISION.md` before changing product behavior and `docs/ARCHITECTURE.md` before changing persistence or window lifecycle.
 
 - Use AppKit exclusively. Create UI in Swift code; do not introduce SwiftUI, storyboards, or nibs.
+- Private APIs are allowed when useful: this app is for personal distribution, not the App Store. Isolate any dependency on undocumented behavior and document it.
 - Keep the app small, native, and focused on temporary plain text. Detailed visual design is still to come.
 - Notes are app-owned state, not documents. Do not add Save/Open workflows or file pickers.
 - Preserve all note text and restoration state. Closing hides; deletion is a separate explicit operation.

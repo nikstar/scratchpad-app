@@ -53,6 +53,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator?.persist()
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        coordinator?.reopen()
+        return false
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
 }

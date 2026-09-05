@@ -9,12 +9,14 @@ final class NoteWindowController: NSWindowController, NSWindowDelegate, NSTextVi
     var onPlacementChange: ((WindowPlacement) -> Void)?
     var onFocus: (() -> Void)?
     var onHide: (() -> Void)?
+    var onNewNote: (() -> Void)?
     private var isApplyingState = true
 
     init(note: Note, displays: [Display]) {
         noteID = note.id
         let panel = NotePanel()
         super.init(window: panel)
+        panel.onNewNote = { [weak self] in self?.onNewNote?() }
         panel.delegate = self
         panel.title = note.title
         panel.identifier = NSUserInterfaceItemIdentifier(note.id.uuidString)

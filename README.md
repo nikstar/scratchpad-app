@@ -18,10 +18,23 @@ xcodebuild -project Scratchpad.xcodeproj -scheme Scratchpad \
 
 Use `CODE_SIGNING_ALLOWED=NO` for an unsigned local compile. For running the sandboxed app and hosted tests, use normal development signing or ad hoc signing with `CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual`.
 
+## Install a release build
+
+From the repository, run [scripts/install.sh](scripts/install.sh):
+
+```sh
+./scripts/install.sh
+open "$HOME/Applications/Scratchpad.app"
+```
+
+The script locates the project relative to itself, builds Release, verifies its ad hoc signature, and installs it at `~/Applications/Scratchpad.app`. It requires Xcode but no signing certificate or administrator access. An existing running copy is asked to quit normally so all notes are flushed; a failed or cancelled quit stops installation. The previous app bundle is retained until its replacement succeeds. Note storage is untouched, and the script can be run again for updates. The installer does not launch the app automatically.
+
 ## Current behavior
 
 - First launch opens one blank note. Subsequent launches restore the existing workspace, including an intentionally empty workspace.
 - Notes use small, resizable `NSPanel` windows that remain visible when another app is active. They appear across Spaces, including alongside full-screen apps.
+- A small **+** in each note's title bar creates another note without enlarging the panel.
+- Scratchpad appears in the Dock and app switcher while running. A Dock click reveals the current workspace, reopens the most recent hidden note when necessary, or creates a note if none exist.
 - The menu bar icon provides New Note, Show All, Hide All, individual note reopening, deletion, and Quit. Checkmarks identify visible notes.
 - Closing a window or pressing **⌘W** hides its note. Deletion is a separate action; deleting nonempty text requires confirmation.
 - **⌘N**, **⌘Q**, and standard text editing shortcuts work while Scratchpad is active. They are not global shortcuts.

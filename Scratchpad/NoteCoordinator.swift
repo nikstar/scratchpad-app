@@ -65,6 +65,22 @@ final class NoteCoordinator: NSObject {
         persist()
     }
 
+    /// Dock/Finder reopening reveals the current workspace without reopening
+    /// every deliberately hidden note or making a new note on every click.
+    func reopen() {
+        if session.notes.isEmpty {
+            createNote()
+            return
+        }
+        let visible = session.windowOrder.filter { note($0)?.isVisible == true }
+        for id in visible { controllers[id]?.show(focus: false) }
+        let active = session.activeNoteID
+        if let id = active.flatMap({ visible.contains($0) ? $0 : nil }) ?? visible.last
+            ?? active ?? session.notes.last?.id {
+            showNote(id)
+        }
+    }
+
     func hideNote(_ id: UUID) {
         guard let index = index(id) else { return }
         if let controller = controllers[id] { session.notes[index].editor = controller.editorState }
@@ -175,6 +191,7 @@ final class NoteCoordinator: NSObject {
             self.scheduleStateSave()
         }
         controller.onHide = { [weak self] in self?.hideNote(id) }
+        controller.onNewNote = { [weak self] in self?.createNote() }
         controllers[id] = controller
         return controller
     }

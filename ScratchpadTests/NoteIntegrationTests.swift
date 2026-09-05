@@ -97,4 +97,54 @@ final class NoteIntegrationTests: XCTestCase {
         XCTAssertEqual(menu.items.first { $0.representedObject as? UUID == firstID }?.state, .on)
         try coordinator.flush()
     }
+
+    func testTitlebarPlusCreatesNoteAndPreservesCompactChrome() throws {
+        let (coordinator, directory) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        let controller = try XCTUnwrap(coordinator.controllers.values.first)
+        let panel = try XCTUnwrap(controller.window as? NotePanel)
+        let originalFrame = panel.frame
+        let reference = NSPanel(contentRect: .zero, styleMask: panel.styleMask, backing: .buffered, defer: false)
+        let standardContentHeight = reference.contentRect(forFrameRect: originalFrame).height
+        XCTAssertEqual(controller.scrollView.frame.height, standardContentHeight, accuracy: 0.5)
+        XCTAssertTrue(panel.newNoteButton.window === panel)
+        panel.newNoteButton.performClick(nil)
+        XCTAssertEqual(coordinator.session.notes.count, 2)
+        XCTAssertEqual(panel.frame, originalFrame)
+        XCTAssertTrue(coordinator.session.notes.allSatisfy(\.isVisible))
+
+        panel.setContentSize(panel.contentMinSize)
+        panel.contentView?.superview?.layoutSubtreeIfNeeded()
+        let buttonFrame = panel.newNoteButton.convert(panel.newNoteButton.bounds, to: nil)
+        XCTAssertGreaterThanOrEqual(buttonFrame.minX, panel.frame.width - 40)
+        XCTAssertLessThanOrEqual(buttonFrame.maxX, panel.frame.width)
+        XCTAssertGreaterThanOrEqual(buttonFrame.minY, controller.scrollView.frame.maxY)
+        try coordinator.flush()
+        XCTAssertEqual(try SessionFile(directory: directory).load().session.notes.count, 2)
+    }
+
+    func testDockReopenKeepsOtherHiddenNotesHidden() throws {
+        let (coordinator, _) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        coordinator.createNote()
+        let active = try XCTUnwrap(coordinator.session.activeNoteID)
+        coordinator.hideAllNotes()
+        coordinator.reopen()
+        XCTAssertEqual(coordinator.session.notes.filter(\.isVisible).map(\.id), [active])
+        XCTAssertTrue(try XCTUnwrap(coordinator.controllers[active]?.window).isVisible)
+        coordinator.reopen()
+        XCTAssertEqual(coordinator.session.notes.count, 2)
+        XCTAssertEqual(coordinator.session.notes.filter(\.isVisible).map(\.id), [active])
+        try coordinator.flush()
+    }
+
+    func testDockReopenCreatesNoteInEmptyWorkspace() throws {
+        let (coordinator, _) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        coordinator.deleteNote(try XCTUnwrap(coordinator.session.notes.first?.id))
+        coordinator.reopen()
+        XCTAssertEqual(coordinator.session.notes.count, 1)
+        XCTAssertTrue(try XCTUnwrap(coordinator.controllers.values.first?.window).isVisible)
+        try coordinator.flush()
+    }
 }
