@@ -14,7 +14,7 @@ Scratchpad is a lightweight place to put short-lived text while doing something 
 
 - Multiple independent plain-text notes.
 - Compact, movable, resizable floating panels.
-- Menu bar management: create, reveal, hide, and delete.
+- Menu bar management: create, reveal, hide, and reopen recently closed notes.
 - Automatic restoration of text, window frames, visibility, relative stacking order, active note, caret/selection, and scroll position.
 - Resilience to ordinary crashes, interrupted writes, and changed display arrangements.
 
@@ -24,7 +24,8 @@ Rich text, Markdown rendering, syntax highlighting, document saving/export, sync
 
 ## Current provisional decisions
 
-- Closing hides a note; deletion is explicit.
+- Closing a note or pressing ⌘W removes it immediately without confirmation. There is no separate closed-versus-deleted state or Delete action. Recently Closed retains the 12 most recently closed notes, ordered by close date, and can restore them across relaunches.
+- Quitting keeps every current note intact. Show All / Hide All only change current notes' visibility and do not add to Recently Closed.
 - Start with a native menu as the management UI.
 - Show the app in the Dock while running. A click from another app brings the workspace forward or reopens the most recent note when all notes are hidden. A click while Scratchpad is already active focuses an existing empty note or creates one if necessary.
 - Keep a small plus button at the trailing edge of each title bar to create another note without adding a toolbar or increasing the panel height.
@@ -38,10 +39,11 @@ Rich text, Markdown rendering, syntax highlighting, document saving/export, sync
 
 ## Design questions for later
 
-Panel chrome and close behavior; note colors/materials; typography; menu versus popover management; default size and placement; whether floating should become optional; whether a global new-note shortcut is useful.
+Panel chrome; note colors/materials; typography; menu versus popover management; default size and placement; whether floating should become optional; whether a global new-note shortcut is useful.
 
 ## Decision log
 
 - **2026-09-05:** Establish the AppKit foundation, remove the starter storyboard, and make reliable automatic restoration the first engineering priority.
 - **2026-09-05:** Keep the compact panel direction; add Dock presence, a trailing title-bar plus button, and a repeatable release installer for `~/Applications`. Private APIs are explicitly permitted if needed.
 - **2026-09-05:** Correct the installer destination to `/Applications`. Repeated Dock clicks while active provide an empty note, reusing an existing blank note before creating another.
+- **2026-09-05:** Make closing remove a note and replace Delete with Recently Closed: retain 12 entries in reverse chronological order by close date. Quit preserves the workspace. Reopening restores a note and removes it from the recent list.

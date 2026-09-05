@@ -30,20 +30,30 @@ final class NoteIntegrationTests: XCTestCase {
         controller.textView.setSelectedRange(NSRange(location: 2, length: 4))
         panel.performClose(nil)
         XCTAssertFalse(panel.isVisible)
-        XCTAssertFalse(coordinator.session.notes[0].isVisible)
-        XCTAssertEqual(coordinator.session.notes.count, 1)
+        XCTAssertTrue(coordinator.session.notes.isEmpty)
+        XCTAssertTrue(coordinator.controllers.isEmpty)
+        XCTAssertTrue(coordinator.session.windowOrder.isEmpty)
+        XCTAssertNil(coordinator.session.activeNoteID)
+        XCTAssertEqual(coordinator.session.recentlyClosed.first?.note.id, first.id)
         try coordinator.flush()
 
         let restored = try NoteCoordinator(store: SessionStore(directory: directory))
         restored.start()
         defer { restored.controllers.values.forEach { $0.hide() } }
+        XCTAssertTrue(restored.controllers.isEmpty)
+        XCTAssertEqual(restored.session.recentlyClosed, coordinator.session.recentlyClosed)
+        restored.reopenClosedNote(first.id)
         let reopened = try XCTUnwrap(restored.controllers[first.id])
         XCTAssertEqual(reopened.textView.string, controller.textView.string)
         XCTAssertEqual(reopened.window?.frame, frame)
         XCTAssertEqual(reopened.textView.selectedRange(), NSRange(location: 2, length: 4))
-        XCTAssertFalse(try XCTUnwrap(reopened.window).isVisible)
-        restored.showNote(first.id)
         XCTAssertTrue(try XCTUnwrap(reopened.window).isVisible)
+        XCTAssertTrue(restored.session.recentlyClosed.isEmpty)
+        XCTAssertEqual(restored.session.activeNoteID, first.id)
+        try restored.flush()
+        let saved = try SessionFile(directory: directory).load().session
+        XCTAssertEqual(saved.notes.map(\.id), [first.id])
+        XCTAssertTrue(saved.recentlyClosed.isEmpty)
     }
 
     func testLongNoteRestoresScrollAndSelection() throws {
@@ -64,15 +74,16 @@ final class NoteIntegrationTests: XCTestCase {
         XCTAssertEqual(reopened.editorState.scrollY, 120, accuracy: 1)
     }
 
-    func testDeletingLastBlankNoteRestoresEmptyWorkspace() throws {
+    func testClosingLastBlankNoteRestoresEmptyWorkspace() throws {
         let (coordinator, directory) = try makeCoordinator()
         let id = try XCTUnwrap(coordinator.session.notes.first?.id)
-        coordinator.deleteNote(id)
+        coordinator.closeNote(id)
         try coordinator.flush()
         let restored = try NoteCoordinator(store: SessionStore(directory: directory))
         restored.start()
         XCTAssertTrue(restored.session.notes.isEmpty)
         XCTAssertTrue(restored.controllers.isEmpty)
+        XCTAssertEqual(restored.session.recentlyClosed.map { $0.note.id }, [id])
     }
 
     func testMenuBarCanReopenNotesWhenAllWindowsAreHidden() throws {
@@ -141,9 +152,12 @@ final class NoteIntegrationTests: XCTestCase {
     func testDockReopenCreatesNoteInEmptyWorkspace() throws {
         let (coordinator, _) = try makeCoordinator()
         defer { coordinator.controllers.values.forEach { $0.hide() } }
-        coordinator.deleteNote(try XCTUnwrap(coordinator.session.notes.first?.id))
+        let closedID = try XCTUnwrap(coordinator.session.notes.first?.id)
+        coordinator.closeNote(closedID)
         coordinator.reopen()
         XCTAssertEqual(coordinator.session.notes.count, 1)
+        XCTAssertNotEqual(coordinator.session.notes.first?.id, closedID)
+        XCTAssertEqual(coordinator.session.recentlyClosed.map { $0.note.id }, [closedID])
         XCTAssertTrue(try XCTUnwrap(coordinator.controllers.values.first?.window).isVisible)
         try coordinator.flush()
     }
@@ -224,5 +238,102 @@ final class NoteIntegrationTests: XCTestCase {
         XCTAssertEqual(coordinator.session.activeNoteID, visibleBlankID)
         XCTAssertFalse(try XCTUnwrap(coordinator.controllers[hiddenBlankID]?.window).isVisible)
         try coordinator.flush()
+    }
+
+    func testRecentlyClosedMenuReopensAndClosingAgainMovesNoteToTop() throws {
+        let (coordinator, directory) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        let firstID = try XCTUnwrap(coordinator.session.notes.first?.id)
+        coordinator.controllers[firstID]?.textView.insertText("First note 🐈", replacementRange: NSRange(location: 0, length: 0))
+        coordinator.createNote()
+        let secondID = try XCTUnwrap(coordinator.session.activeNoteID)
+        coordinator.controllers[secondID]?.textView.insertText("Second note", replacementRange: NSRange(location: 0, length: 0))
+        // Close out of creation order; the menu must follow the close dates.
+        coordinator.controllers[secondID]?.window?.performClose(nil)
+        coordinator.controllers[firstID]?.window?.performClose(nil)
+        let status = StatusItemController(coordinator: coordinator)
+        defer { NSStatusBar.system.removeStatusItem(status.statusItem) }
+        let menu = try XCTUnwrap(status.statusItem.menu)
+        status.menuNeedsUpdate(menu)
+        XCTAssertNil(menu.item(withTitle: "Delete Note"))
+        XCTAssertNil(menu.items.first { $0.representedObject is UUID })
+        let recent = try XCTUnwrap(menu.item(withTitle: "Recently Closed")?.submenu)
+        XCTAssertEqual(recent.items.map(\.title), ["First note 🐈", "Second note"])
+        recent.performActionForItem(at: 1)
+        XCTAssertEqual(coordinator.session.notes.map(\.id), [secondID])
+        XCTAssertTrue(try XCTUnwrap(coordinator.controllers[secondID]?.window).isVisible)
+        XCTAssertEqual(coordinator.session.recentlyClosed.map { $0.note.id }, [firstID])
+        coordinator.controllers[secondID]?.window?.performClose(nil)
+        // A repeated/stale close cannot add the same note twice.
+        coordinator.closeNote(secondID)
+        status.menuNeedsUpdate(menu)
+        XCTAssertEqual(menu.item(withTitle: "Recently Closed")?.submenu?.items.map(\.title), ["Second note", "First note 🐈"])
+        try coordinator.flush()
+        XCTAssertEqual(try SessionFile(directory: directory).load().session.recentlyClosed.map { $0.note.id }, [secondID, firstID])
+    }
+
+    func testClosingLongNoteRestoresScrollSelectionAndReleasesController() throws {
+        weak var closedController: NoteWindowController?
+        // AppKit autoreleases objects while creating and closing windows.
+        let coordinator = try autoreleasepool {
+            let (coordinator, _) = try makeCoordinator()
+            let id = try XCTUnwrap(coordinator.session.notes.first?.id)
+            closedController = coordinator.controllers[id]
+            coordinator.controllers[id]?.textView.insertText((1...100).map { "Line \($0)" }.joined(separator: "\n"),
+                                                            replacementRange: NSRange(location: 0, length: 0))
+            coordinator.controllers[id]?.restoreEditor(EditorState(selectionLocation: 60, selectionLength: 3, scrollY: 120))
+            coordinator.controllers[id]?.window?.performClose(nil)
+            return coordinator
+        }
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        XCTAssertNil(closedController)
+        let id = try XCTUnwrap(coordinator.session.recentlyClosed.first?.note.id)
+        coordinator.reopenClosedNote(id)
+        let restored = try XCTUnwrap(coordinator.controllers[id])
+        XCTAssertEqual(restored.editorState.selectionLocation, 60)
+        XCTAssertEqual(restored.editorState.selectionLength, 3)
+        XCTAssertEqual(restored.editorState.scrollY, 120, accuracy: 1)
+        try coordinator.flush()
+    }
+
+    func testQuitSnapshotKeepsOpenAndHiddenNotesOutOfRecentlyClosed() throws {
+        let (coordinator, directory) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        let firstID = try XCTUnwrap(coordinator.session.notes.first?.id)
+        coordinator.createNote()
+        let secondID = try XCTUnwrap(coordinator.session.activeNoteID)
+        coordinator.hideNote(firstID)
+        // This is the same final-state flush used by applicationShouldTerminate.
+        try coordinator.flush()
+        let restored = try NoteCoordinator(store: SessionStore(directory: directory))
+        restored.start()
+        defer { restored.controllers.values.forEach { $0.hide() } }
+        XCTAssertEqual(restored.session.notes.map(\.id), [firstID, secondID])
+        XCTAssertEqual(restored.session.notes.map(\.isVisible), [false, true])
+        XCTAssertTrue(restored.session.recentlyClosed.isEmpty)
+    }
+
+    func testRecentlyClosedMenuKeepsOnlyTwelveNotes() throws {
+        let (coordinator, directory) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        var closedIDs: [UUID] = []
+        for index in 0..<15 {
+            if index > 0 { coordinator.createNote() }
+            let id = try XCTUnwrap(coordinator.session.notes.last?.id)
+            closedIDs.append(id)
+            coordinator.controllers[id]?.window?.performClose(nil)
+        }
+        let expected = Array(closedIDs.suffix(12).reversed())
+        XCTAssertEqual(coordinator.session.recentlyClosed.map { $0.note.id }, expected)
+        XCTAssertTrue(coordinator.controllers.isEmpty)
+        let status = StatusItemController(coordinator: coordinator)
+        defer { NSStatusBar.system.removeStatusItem(status.statusItem) }
+        let menu = try XCTUnwrap(status.statusItem.menu)
+        status.menuNeedsUpdate(menu)
+        XCTAssertEqual(menu.item(withTitle: "Recently Closed")?.submenu?.items.compactMap { $0.representedObject as? UUID }, expected)
+        try coordinator.flush()
+        XCTAssertEqual(try SessionFile(directory: directory).load().session.recentlyClosed.map { $0.note.id }, expected)
+        coordinator.reopenClosedNote(closedIDs[0])
+        XCTAssertTrue(coordinator.session.notes.isEmpty)
     }
 }

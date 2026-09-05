@@ -61,18 +61,22 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             entry.toolTip = note.isVisible ? "Bring this note forward" : "Reopen this hidden note"
             menu.addItem(entry)
         }
-        if !coordinator.session.notes.isEmpty {
-            menu.addItem(.separator())
-            let deleteMenu = NSMenu()
-            for note in coordinator.session.notes {
-                let entry = item(note.title, action: #selector(deleteNote))
-                entry.representedObject = note.id
-                deleteMenu.addItem(entry)
-            }
-            let delete = NSMenuItem(title: "Delete Note", action: nil, keyEquivalent: "")
-            delete.submenu = deleteMenu
-            menu.addItem(delete)
+        menu.addItem(.separator())
+        let recentMenu = NSMenu(title: "Recently Closed")
+        for closed in coordinator.session.recentlyClosed {
+            let entry = item(closed.note.title, action: #selector(reopenClosedNote))
+            entry.representedObject = closed.note.id
+            entry.toolTip = "Closed \(closed.closedAt.formatted(date: .abbreviated, time: .shortened))"
+            recentMenu.addItem(entry)
         }
+        if recentMenu.items.isEmpty {
+            let empty = NSMenuItem(title: "No recently closed notes", action: nil, keyEquivalent: "")
+            empty.isEnabled = false
+            recentMenu.addItem(empty)
+        }
+        let recent = NSMenuItem(title: "Recently Closed", action: nil, keyEquivalent: "")
+        recent.submenu = recentMenu
+        menu.addItem(recent)
         menu.addItem(.separator())
         menu.addItem(item("Quit Scratchpad", action: #selector(quit), key: "q"))
     }
@@ -93,9 +97,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         coordinator.showNote(id)
     }
 
-    @objc private func deleteNote(_ sender: NSMenuItem) {
+    @objc private func reopenClosedNote(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? UUID else { return }
-        coordinator.deleteNote(id)
+        coordinator.reopenClosedNote(id)
     }
 
     @objc private func showWriteError(_ sender: Any?) {

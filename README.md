@@ -1,6 +1,6 @@
 # Scratchpad
 
-A small native macOS home for temporary text. Each note is a compact floating panel, with a menu bar icon to create, find, hide, and delete notes. Text and workspace state are restored automatically. There are no documents to name, open, or save.
+A small native macOS home for temporary text. Each note is a compact floating panel, with a menu bar icon to create, find, and reopen recently closed notes. Text and workspace state are restored automatically. There are no documents to name, open, or save.
 
 Built with Swift and AppKit only. All windows, menus, and text views are created in code; there are no storyboards, nibs, SwiftUI views, or external dependencies.
 
@@ -37,8 +37,9 @@ If the selected developer tools are only Command Line Tools, the installer autom
 - Notes use small, resizable `NSPanel` windows that remain visible when another app is active. They appear across Spaces, including alongside full-screen apps.
 - A small **+** in each note's title bar creates another note cascaded from that window. Keyboard/menu creation cascades from the current note. The control dims with an inactive window while remaining clickable.
 - Scratchpad appears in the Dock and app switcher while running. The first Dock click brings the workspace forward. Clicking again while Scratchpad is already active focuses an existing empty note (including a hidden one), or creates a new cascaded note when none is empty.
-- The menu bar icon provides New Note, Show All, Hide All, individual note reopening, deletion, and Quit. Checkmarks identify visible notes.
-- Closing a window or pressing **⌘W** hides its note. Deletion is a separate action; deleting nonempty text requires confirmation.
+- The menu bar icon provides New Note, Show All, Hide All, current notes, Recently Closed, and Quit. Checkmarks identify visible current notes. Hide All only changes visibility.
+- Closing a window or pressing **⌘W** removes its note immediately, without a confirmation. **Recently Closed** retains the last 12 notes, newest close date first, across relaunches. Reopening restores its text, window placement, selection, and scroll position, and removes it from that submenu.
+- Quitting preserves all current notes. Closing and deleting are the same action; there is no separate Delete menu.
 - **⌘N**, **⌘Q**, and standard text editing shortcuts work while Scratchpad is active. They are not global shortcuts.
 - Text is plain text, with native selection, undo/redo, and copy/paste. Automatic text substitutions are off.
 - Light and dark appearances follow macOS. The initial UI is a functional foundation; visual design is still open.

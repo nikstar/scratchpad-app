@@ -1,27 +1,47 @@
 import Foundation
 
 nonisolated struct Session: Codable, Equatable, Sendable {
-    static let currentVersion = 1
+    static let currentVersion = 2
+    static let recentlyClosedLimit = 12
 
     var version = currentVersion
     var notes: [Note] = []
     /// Back to front, independent of the notes' creation order.
     var windowOrder: [UUID] = []
     var activeNoteID: UUID?
+    /// Most recently closed first. These notes have no live window controller.
+    var recentlyClosed: [ClosedNote] = []
+
+    mutating func rememberClosed(_ note: Note, at date: Date = Date()) {
+        recentlyClosed.insert(ClosedNote(note: note, closedAt: date), at: 0)
+        recentlyClosed.sort { $0.closedAt > $1.closedAt }
+        recentlyClosed = Array(recentlyClosed.prefix(Self.recentlyClosedLimit))
+    }
 
     func validate() throws {
         guard version == Self.currentVersion else {
             throw SessionError.unsupportedVersion(version)
         }
         let ids = Set(notes.map(\.id))
+        let closedIDs = Set(recentlyClosed.map { $0.note.id })
         guard ids.count == notes.count,
+              closedIDs.count == recentlyClosed.count,
+              ids.isDisjoint(with: closedIDs),
+              recentlyClosed.count <= Self.recentlyClosedLimit,
+              recentlyClosed.allSatisfy({ $0.closedAt.timeIntervalSinceReferenceDate.isFinite }),
+              zip(recentlyClosed, recentlyClosed.dropFirst()).allSatisfy({ $0.closedAt >= $1.closedAt }),
               Set(windowOrder).count == windowOrder.count,
               Set(windowOrder).isSubset(of: ids),
               activeNoteID.map({ ids.contains($0) }) ?? true,
-              notes.allSatisfy({ $0.placement.isValid && $0.editor.isValid }) else {
+              (notes + recentlyClosed.map(\.note)).allSatisfy({ $0.placement.isValid && $0.editor.isValid }) else {
             throw SessionError.invalidContents
         }
     }
+}
+
+nonisolated struct ClosedNote: Codable, Equatable, Sendable {
+    var note: Note
+    var closedAt: Date
 }
 
 nonisolated struct Note: Codable, Equatable, Identifiable, Sendable {

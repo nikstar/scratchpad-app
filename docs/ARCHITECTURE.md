@@ -12,7 +12,11 @@ The title-bar plus is a borderless `NSButton` in a trailing `NSTitlebarAccessory
 
 Plus-button creation carries the source note's identity explicitly, so pressing it on an inactive panel still cascades from that panel. Keyboard/menu creation uses the key note or most recently focused visible note. Placement uses the source window's current top-left corner and display with a 22-point cascade offset, wrapping at display edges. The default note size is unchanged. With no visible source, the first note is centered on the pointer's display. Title-bar controls use the system secondary text color and dim to 45% opacity while their window or the app is inactive, without disabling interaction. View opacity is applied explicitly because symbol tinting in the title bar does not reliably preserve a semantic color's alpha.
 
-`NoteCoordinator` owns the session model and one `NoteWindowController` per note, including hidden notes. It handles creation, visibility, deletion, stacking, and display changes. `NotePanel` controls native window behavior; `NoteWindowController` configures the plain `NSTextView` and translates editing/window notifications into model changes. UI details can be replaced without changing the storage model.
+`NoteCoordinator` owns the session model and one `NoteWindowController` per current note, including notes hidden with Hide All. It handles creation, visibility, closing/reopening, stacking, and display changes. `NotePanel` controls native window behavior; `NoteWindowController` configures the plain `NSTextView` and translates editing/window notifications into model changes. UI details can be replaced without changing the storage model.
+
+The close button and ⌘W reach `windowShouldClose`, which snapshots the latest text/editor state, removes the note and its controller from the workspace, and records its close date. Recently Closed stores up to 12 complete note snapshots, ordered newest close date first. It has no live windows. Reopening removes that entry, recreates its original note ID and window at the saved placement, restores selection/scroll, and focuses it. Closing again records a new date. Dock reopening only considers current notes, never Recently Closed.
+
+AppKit does not call `windowShouldClose` for application quit. The termination delegate only flushes the current session; quitting never moves notes into Recently Closed. There is no separate deletion action or confirmation. Show All / Hide All remain visibility operations on current notes.
 
 ## Restoration contract
 
@@ -22,12 +26,13 @@ The versioned `Session` records:
 - Outer window frames in AppKit screen coordinates, display IDs, and previous display visible frames.
 - Individual visibility, relative back-to-front order, and the most recently focused note.
 - UTF-16 selection ranges and vertical scroll offsets.
+- Recently closed note snapshots and their close timestamps, with a maximum of 12 and no duplicate IDs across current/history entries.
 
 On an unchanged display arrangement, frames are restored exactly. When a display moves, coordinates are translated relative to its saved visible frame. If a display is missing or smaller, the window is moved/resized onto an available display. Automatic repositioning does not intentionally overwrite the preferred placement; a subsequent user move or resize establishes a new placement.
 
 Panels join all Spaces. This deliberately avoids promising restoration of individual Space assignments, for which macOS does not offer a suitable public API. Native undo history is in memory and is not restored between launches.
 
-Hidden windows are kept alive for cheap reopening and undo continuity during the same run. Closing never removes text. AppKit document restoration is disabled for note panels so it cannot race the app's own restoration.
+Hidden current windows are kept alive for cheap revealing and undo continuity during the same run. Closing releases the window and its undo history; the recoverable snapshot keeps text, placement, selection, and scroll. The oldest history entry is discarded when the limit is exceeded. AppKit document restoration is disabled for note panels so it cannot race the app's own restoration.
 
 ## Persistence and recovery
 
@@ -43,6 +48,8 @@ If the primary file is unreadable, a valid backup is loaded, the bad primary is 
 
 Write failures are surfaced through the menu bar icon and a retry action. A failed final flush keeps the app open unless the user explicitly chooses Quit Anyway. The storage schema is versioned; future model changes must include a migration or explicitly reject incompatible data.
 
+Schema version 2 adds `recentlyClosed`. `SessionFile` migrates version 1 in memory, preserving every existing note, visibility flag, frame, and editor state, with an empty close history. Previously hidden notes remain current notes: version 1 has no close dates, so migration does not guess which notes belong in a limited history. The next write uses version 2 and retains the prior validated file as a backup. Version 1 backups remain readable; future or unknown versions are still rejected without replacement.
+
 ## Concurrency
 
 AppKit and mutable session state stay on the main actor. Codable value models and the synchronous file layer are explicitly nonisolated and Sendable. Disk operations are confined to one queue, so an older snapshot cannot overwrite a newer completed write.
@@ -51,3 +58,4 @@ AppKit and mutable session state stay on the main actor. Codable value models an
 
 - [NSPanel floating behavior](https://developer.apple.com/documentation/appkit/nspanel/isfloatingpanel)
 - [Windows available across Spaces](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/canjoinallspaces)
+- [User-initiated window closing versus application quit](https://developer.apple.com/documentation/appkit/nswindowdelegate/windowshouldclose(_:))

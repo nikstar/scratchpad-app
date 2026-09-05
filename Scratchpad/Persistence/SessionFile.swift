@@ -75,8 +75,23 @@ nonisolated final class SessionFile: Sendable {
         // Read the version first, even if the rest of a future schema differs.
         struct Header: Decodable { let version: Int }
         let version = try JSONDecoder().decode(Header.self, from: data).version
-        guard version == Session.currentVersion else { throw SessionError.unsupportedVersion(version) }
-        let session = try JSONDecoder().decode(Session.self, from: data)
+        let session: Session
+        switch version {
+        case 1:
+            // Version 1 had no close history. Preserve every existing note,
+            // including hidden notes, rather than guessing when it was closed.
+            struct LegacySession: Decodable {
+                let notes: [Note]
+                let windowOrder: [UUID]
+                let activeNoteID: UUID?
+            }
+            let legacy = try JSONDecoder().decode(LegacySession.self, from: data)
+            session = Session(notes: legacy.notes, windowOrder: legacy.windowOrder, activeNoteID: legacy.activeNoteID)
+        case Session.currentVersion:
+            session = try JSONDecoder().decode(Session.self, from: data)
+        default:
+            throw SessionError.unsupportedVersion(version)
+        }
         try session.validate()
         return session
     }

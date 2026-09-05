@@ -11,17 +11,19 @@ Run the shared Scratchpad scheme's tests with Product → Test or the `xcodebuil
 - Rapid queued writes followed by a flush restore the latest state.
 - Missing/moved displays and smaller screens yield reachable panels.
 - Editor selections are safely clamped using UTF-16 coordinates.
-- AppKit integration checks text editing, panel behavior, hiding/reopening, and recreation from disk.
+- AppKit integration checks text editing, panel behavior, hiding/revealing, closing/reopening, and recreation from disk.
+- Recently Closed survives disk round trips, sorts by close date, retains only 12 entries, and restores through the menu even when no current windows exist.
+- Version 1 sessions and backups migrate without losing hidden notes or restoration state. Quitting preserves current notes without adding history entries.
 
 ## Manual regression checklist
 
 1. Launch: one blank compact note, menu bar icon, a Dock icon, and no save/open commands. Check the title-bar plus creates a note and keeps the compact height.
 2. Enter multiline Unicode text. Exercise select all, copy/paste, undo/redo, and ⌘N.
 3. Create several notes. Move, resize, overlap, select text, and scroll a longer note.
-4. Close one note. Verify it remains listed and can be reopened. Hide all and show all.
+4. Close one note with text. Verify it leaves the current list immediately without a confirmation and appears first in Recently Closed. Reopen it and compare text, placement, selection, and scrolling. Verify it leaves Recently Closed. Close it again and check its position in history. Hide All / Show All must not add history entries.
 5. Quit normally and relaunch. Compare exact text, frames, visibility, order, selections, and scrolling.
 6. Quit with every note hidden, then relaunch. Verify no unwanted blank window appears.
-7. Delete test notes using the management menu. Relaunch an empty workspace; it should remain empty.
+7. Close all test notes. Relaunch an empty workspace; it should remain empty and Recently Closed should remain available. Close more than 12 notes and check that only the latest 12 close dates are retained. Quit with open notes and verify they stay current after relaunch.
 8. Force-quit after allowing writes to finish, then relaunch. Confirm persisted state survives.
 9. Switch to another app; notes should remain visible. Check another Space and a full-screen app.
 10. Check light/dark appearance and resizing down to the minimum size.
@@ -60,3 +62,9 @@ Tests establish data and local AppKit behavior. Multi-display hardware changes, 
 - Reopen-event tests distinguish the original `frnt` flag from missing or malformed metadata. Integration tests cover first-click reveal, creating exactly one blank note, reusing visible or hidden blanks, and preserving whitespace content.
 - All 28 XCTest cases passed. Reusing an older blank note now records its focus immediately, including when AppKit defers key-window delivery.
 - Ran the release installer from outside the repository with Command Line Tools selected. It found the installed Xcode without changing the system selection, gracefully quit the running app, and installed to `/Applications`. The installed signature and sandbox entitlement verified successfully.
+
+## Close and Recently Closed — 2026-09-05
+
+- All 36 XCTest cases passed. Coverage includes nonempty close without confirmation, released window controllers, exact text/frame/selection/scroll recovery, reopening from the menu with no current windows, re-closing at the top of history, stale close/reopen actions, and persistence of the 12-entry limit.
+- History is checked against close timestamps rather than note creation order. Version 1 sessions and backups migrate with every existing note and visibility flag intact; malformed archived state is rejected.
+- Installed and signature-verified the Release build at `/Applications/Scratchpad.app`. Launched, quit normally with ⌘Q, and relaunched. The live session migrated to version 2 with all seven current note records, window order, and active note unchanged, and no entries added to Recently Closed.

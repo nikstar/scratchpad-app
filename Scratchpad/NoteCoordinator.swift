@@ -127,22 +127,31 @@ final class NoteCoordinator: NSObject {
         persist()
     }
 
-    func deleteNote(_ id: UUID) {
-        guard let note = note(id) else { return }
-        if !note.text.isEmpty {
-            NSApp.activate()
-            let alert = NSAlert()
-            alert.messageText = "Delete this note?"
-            alert.informativeText = "“\(note.title)” will be permanently deleted. Close the window to keep it for later instead."
-            alert.addButton(withTitle: "Cancel")
-            alert.addButton(withTitle: "Delete Note")
-            alert.buttons.last?.hasDestructiveAction = true
-            guard alert.runModal() == .alertSecondButtonReturn else { return }
+    func closeNote(_ id: UUID) {
+        guard var note = note(id) else { return }
+        let controller = controllers.removeValue(forKey: id)
+        if let controller {
+            note.text = controller.textView.string
+            note.editor = controller.editorState
         }
-        controllers.removeValue(forKey: id)?.hide()
+        session.rememberClosed(note)
         session.notes.removeAll { $0.id == id }
         session.windowOrder.removeAll { $0 == id }
         if session.activeNoteID == id { session.activeNoteID = session.windowOrder.last }
+        controller?.close()
+        persist()
+    }
+
+    func reopenClosedNote(_ id: UUID) {
+        guard let index = session.recentlyClosed.firstIndex(where: { $0.note.id == id }) else { return }
+        var note = session.recentlyClosed.remove(at: index).note
+        note.isVisible = true
+        session.notes.append(note)
+        isRestoring = true
+        makeController(for: note)
+        showNote(id)
+        controllers[id]?.restoreEditor(note.editor)
+        isRestoring = false
         persist()
     }
 
@@ -205,13 +214,13 @@ final class NoteCoordinator: NSObject {
             self.scheduleStateSave()
         }
         controller.onFocus = { [weak self] in
-            guard let self, !self.isRestoring else { return }
+            guard let self, !self.isRestoring, self.index(id) != nil else { return }
             self.session.activeNoteID = id
             self.session.windowOrder.removeAll { $0 == id }
             self.session.windowOrder.append(id)
             self.scheduleStateSave()
         }
-        controller.onHide = { [weak self] in self?.hideNote(id) }
+        controller.onClose = { [weak self] in self?.closeNote(id) }
         controller.onNewNote = { [weak self] in
             guard let self else { return }
             self.createNote(relativeTo: self.controllers[id]?.window)

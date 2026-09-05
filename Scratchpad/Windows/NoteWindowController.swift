@@ -8,7 +8,7 @@ final class NoteWindowController: NSWindowController, NSWindowDelegate, NSTextVi
     var onEditorChange: ((EditorState) -> Void)?
     var onPlacementChange: ((WindowPlacement) -> Void)?
     var onFocus: (() -> Void)?
-    var onHide: (() -> Void)?
+    var onClose: (() -> Void)?
     var onNewNote: (() -> Void)?
     private var isApplyingState = true
 
@@ -143,7 +143,9 @@ final class NoteWindowController: NSWindowController, NSWindowDelegate, NSTextVi
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        onHide?()
+        // AppKit calls this for the close button / ⌘W, not application quit.
+        // The coordinator removes the live note and retains its recent snapshot.
+        onClose?()
         return false
     }
 }

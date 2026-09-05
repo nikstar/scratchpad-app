@@ -21,7 +21,11 @@ final class SessionTests: XCTestCase {
         hidden.id = UUID()
         hidden.text = "Hidden note"
         hidden.isVisible = false
-        return Session(notes: [note, hidden], windowOrder: [hidden.id, note.id], activeNoteID: note.id)
+        var closed = note
+        closed.id = UUID()
+        closed.text = "Recently closed 🦊"
+        return Session(notes: [note, hidden], windowOrder: [hidden.id, note.id], activeNoteID: note.id,
+                       recentlyClosed: [ClosedNote(note: closed, closedAt: Date(timeIntervalSince1970: 1_780_000_000))])
     }
 
     func testFullWorkspaceRoundTrip() throws {
@@ -119,5 +123,70 @@ final class SessionTests: XCTestCase {
         let text = "a🐈b"
         XCTAssertEqual(EditorState(selectionLocation: 1, selectionLength: 2).selection(in: text), NSRange(location: 1, length: 2))
         XCTAssertEqual(EditorState(selectionLocation: 99, selectionLength: Int.max).selection(in: text), NSRange(location: 4, length: 0))
+    }
+
+    private func versionOneData(_ session: Session) throws -> Data {
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(session)) as? [String: Any])
+        json["version"] = 1
+        json.removeValue(forKey: "recentlyClosed")
+        return try JSONSerialization.data(withJSONObject: json)
+    }
+
+    func testVersionOneMigrationPreservesEveryNoteAndItsVisibility() throws {
+        let file = SessionFile(directory: try temporaryDirectory())
+        var expected = exampleSession()
+        expected.recentlyClosed = []
+        let original = try versionOneData(expected)
+        try original.write(to: file.primaryURL)
+        let migrated = try file.load()
+        XCTAssertFalse(migrated.isFirstLaunch)
+        XCTAssertEqual(migrated.session, expected)
+        XCTAssertEqual(migrated.session.version, 2)
+        XCTAssertEqual(try Data(contentsOf: file.primaryURL), original)
+        try file.write(migrated.session)
+        XCTAssertEqual(try file.load().session, expected)
+        XCTAssertEqual(try Data(contentsOf: file.backupURL), original)
+    }
+
+    func testVersionOneBackupStillRecoversAfterMigration() throws {
+        let file = SessionFile(directory: try temporaryDirectory())
+        var expected = exampleSession()
+        expected.recentlyClosed = []
+        try versionOneData(expected).write(to: file.backupURL)
+        try Data("{incomplete".utf8).write(to: file.primaryURL)
+        let loaded = try file.load()
+        XCTAssertTrue(loaded.recoveredFromBackup)
+        XCTAssertEqual(loaded.session, expected)
+        try file.write(loaded.session)
+        XCTAssertEqual(try file.load().session, expected)
+    }
+
+    func testCloseHistoryUsesDatesAndDiscardsOldestBeyondTwelve() throws {
+        var session = Session()
+        let base = exampleSession().notes[0]
+        // Insert out of date order to verify ordering by closure date itself.
+        for number in [4, 0, 14, 8, 2, 1, 6, 5, 13, 3, 9, 12, 11, 10, 7] {
+            var note = base
+            note.id = UUID()
+            note.text = "Closed \(number)"
+            session.rememberClosed(note, at: Date(timeIntervalSince1970: Double(number)))
+        }
+        XCTAssertEqual(session.recentlyClosed.map { $0.note.text }, (3...14).reversed().map { "Closed \($0)" })
+        try session.validate()
+        let file = SessionFile(directory: try temporaryDirectory())
+        try file.write(session)
+        XCTAssertEqual(try file.load().session, session)
+    }
+
+    func testInvalidClosedNoteStateIsRejected() throws {
+        var session = exampleSession()
+        session.recentlyClosed[0].note.id = session.notes[0].id
+        XCTAssertThrowsError(try session.validate())
+        session = exampleSession()
+        session.recentlyClosed[0].note.editor.scrollY = -1
+        XCTAssertThrowsError(try session.validate())
+        session = exampleSession()
+        session.recentlyClosed.append(session.recentlyClosed[0])
+        XCTAssertThrowsError(try session.validate())
     }
 }
