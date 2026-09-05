@@ -26,7 +26,7 @@ Rich text, Markdown rendering, syntax highlighting, document saving/export, sync
 
 - Closing hides a note; deletion is explicit.
 - Start with a native menu as the management UI.
-- Show the app in the Dock while running. Clicking it brings the workspace forward or reopens the most recent note when all notes are hidden.
+- Show the app in the Dock while running. A click from another app brings the workspace forward or reopens the most recent note when all notes are hidden. A click while Scratchpad is already active focuses an existing empty note or creates one if necessary.
 - Keep a small plus button at the trailing edge of each title bar to create another note without adding a toolbar or increasing the panel height.
 - New notes cascade 22 points down and right from the note whose plus was pressed, or from the current note for keyboard/menu creation. Title-bar controls dim with inactive windows and remain clickable.
 - Default to a 280 × 220 point outer window, resizable down to a 160 × 90 point content area.
@@ -34,6 +34,7 @@ Rich text, Markdown rendering, syntax highlighting, document saving/export, sync
 - First launch creates one blank note. An intentionally empty or entirely hidden workspace stays that way after relaunch.
 - Follow the system appearance and use native controls until the visual direction is provided.
 - Distribution is personal, outside the App Store. Private APIs are permitted where they help achieve the intended behavior; keep those uses isolated and documented.
+- Release builds install to `/Applications/Scratchpad.app`.
 
 ## Design questions for later
 
@@ -43,3 +44,4 @@ Panel chrome and close behavior; note colors/materials; typography; menu versus 
 
 - **2026-09-05:** Establish the AppKit foundation, remove the starter storyboard, and make reliable automatic restoration the first engineering priority.
 - **2026-09-05:** Keep the compact panel direction; add Dock presence, a trailing title-bar plus button, and a repeatable release installer for `~/Applications`. Private APIs are explicitly permitted if needed.
+- **2026-09-05:** Correct the installer destination to `/Applications`. Repeated Dock clicks while active provide an empty note, reusing an existing blank note before creating another.

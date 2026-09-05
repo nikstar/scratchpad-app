@@ -67,13 +67,28 @@ final class NoteCoordinator: NSObject {
     func showNote(_ id: UUID) {
         guard let index = index(id) else { return }
         session.notes[index].isVisible = true
+        // Record explicit focus requests even if AppKit defers key-window delivery.
+        session.activeNoteID = id
+        session.windowOrder.removeAll { $0 == id }
+        session.windowOrder.append(id)
         controllers[id]?.show(focus: true)
         persist()
     }
 
-    /// Dock/Finder reopening reveals the current workspace without reopening
-    /// every deliberately hidden note or making a new note on every click.
-    func reopen() {
+    /// Repeated Dock clicks provide a blank note without multiplying empty notes.
+    /// A first click from another app retains the normal workspace reveal behavior.
+    func reopen(wasAlreadyActive: Bool = false) {
+        if wasAlreadyActive {
+            let empty = session.notes.first { $0.id == session.activeNoteID && $0.isVisible && $0.text.isEmpty }
+                ?? session.notes.last { $0.isVisible && $0.text.isEmpty }
+                ?? session.notes.last { $0.text.isEmpty }
+            if let empty {
+                showNote(empty.id)
+            } else {
+                createNote()
+            }
+            return
+        }
         if session.notes.isEmpty {
             createNote()
             return

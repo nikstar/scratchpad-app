@@ -26,7 +26,7 @@ Run the shared Scratchpad scheme's tests with Product → Test or the `xcodebuil
 9. Switch to another app; notes should remain visible. Check another Space and a full-screen app.
 10. Check light/dark appearance and resizing down to the minimum size.
 11. With a spare display, move a note there, quit, disconnect the display, and relaunch. Verify it is reachable. Reconnect and verify preferred placement where possible.
-12. Click the Dock icon with visible, entirely hidden, and empty workspaces. It should reveal existing notes first and create one only for an empty workspace.
+12. Click the Dock icon from another app, then click again while Scratchpad is active. The first click reveals the workspace. Further clicks focus an existing empty note or create one if none exists; repeated clicks should not accumulate blank notes. Check visible and hidden blanks, and confirm whitespace-only text is preserved.
 13. Run `scripts/install.sh` from outside the repository, then repeat with the installed app running. Confirm graceful quit, successful replacement, valid sandbox entitlements, and unchanged saved notes.
 14. Move and resize a note away from the screen center. Press its plus while another note is current, then use ⌘N: each new title bar should be offset 22 points down and right from its source. Near screen edges, verify the new note remains reachable on that display.
 15. Switch between notes and then to another app. The title-bar plus should dim with the inactive title, remain clickable, and retain its trailing inset at minimum window size.
@@ -53,3 +53,10 @@ Tests establish data and local AppKit behavior. Multi-display hardware changes, 
 - All 23 XCTest cases passed. Added regression coverage for creating from an inactive source note versus the current note, cascading from resized windows on displays with negative coordinates, and wrapping at screen edges.
 - Moved the plus control 3 points farther inward. It follows window focus and app activation with explicit view opacity over the system text color, while retaining first-click behavior.
 - Rebuilt and installed the Release app. Visually verified the plus is dim with an inactive title and returns to normal contrast when the note is focused.
+
+## Repeated Dock clicks and system installation — 2026-09-05
+
+- Installer destination is `/Applications/Scratchpad.app`; the previous `~/Applications` destination was a mistaken preference, now corrected.
+- Reopen-event tests distinguish the original `frnt` flag from missing or malformed metadata. Integration tests cover first-click reveal, creating exactly one blank note, reusing visible or hidden blanks, and preserving whitespace content.
+- All 28 XCTest cases passed. Reusing an older blank note now records its focus immediately, including when AppKit defers key-window delivery.
+- Ran the release installer from outside the repository with Command Line Tools selected. It found the installed Xcode without changing the system selection, gracefully quit the running app, and installed to `/Applications`. The installed signature and sandbox entitlement verified successfully.

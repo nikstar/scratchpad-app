@@ -173,4 +173,56 @@ final class NoteIntegrationTests: XCTestCase {
         XCTAssertEqual(fromCommand.frame.maxY, fromPlus.frame.maxY - 22)
         try coordinator.flush()
     }
+
+    func testActiveDockClickCreatesOnceThenReusesTheBlankNote() throws {
+        let (coordinator, _) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        let source = try XCTUnwrap(coordinator.controllers.values.first)
+        source.textView.insertText("Existing text", replacementRange: NSRange(location: 0, length: 0))
+        coordinator.reopen(wasAlreadyActive: false)
+        XCTAssertEqual(coordinator.session.notes.count, 1)
+
+        coordinator.reopen(wasAlreadyActive: true)
+        XCTAssertEqual(coordinator.session.notes.count, 2)
+        let blankID = try XCTUnwrap(coordinator.session.activeNoteID)
+        XCTAssertTrue(try XCTUnwrap(coordinator.session.notes.first { $0.id == blankID }).text.isEmpty)
+        coordinator.reopen(wasAlreadyActive: true)
+        XCTAssertEqual(coordinator.session.notes.count, 2)
+        XCTAssertEqual(coordinator.session.activeNoteID, blankID)
+        try coordinator.flush()
+    }
+
+    func testActiveDockClickReopensHiddenBlankWithoutTreatingWhitespaceAsEmpty() throws {
+        let (coordinator, _) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        let blankID = try XCTUnwrap(coordinator.session.notes.first?.id)
+        coordinator.createNote()
+        let textID = try XCTUnwrap(coordinator.session.activeNoteID)
+        let editor = try XCTUnwrap(coordinator.controllers[textID]?.textView)
+        editor.insertText(" \n\t", replacementRange: NSRange(location: 0, length: 0))
+        coordinator.hideNote(blankID)
+        coordinator.reopen(wasAlreadyActive: true)
+        XCTAssertEqual(coordinator.session.notes.count, 2)
+        XCTAssertEqual(coordinator.session.activeNoteID, blankID)
+        XCTAssertTrue(try XCTUnwrap(coordinator.controllers[blankID]?.window).isVisible)
+        XCTAssertEqual(editor.string, " \n\t")
+        try coordinator.flush()
+    }
+
+    func testActiveDockClickPrefersVisibleBlankOverHiddenBlank() throws {
+        let (coordinator, _) = try makeCoordinator()
+        defer { coordinator.controllers.values.forEach { $0.hide() } }
+        let visibleBlankID = try XCTUnwrap(coordinator.session.notes.first?.id)
+        coordinator.createNote()
+        let hiddenBlankID = try XCTUnwrap(coordinator.session.activeNoteID)
+        coordinator.hideNote(hiddenBlankID)
+        coordinator.createNote()
+        let editor = try XCTUnwrap(coordinator.controllers[try XCTUnwrap(coordinator.session.activeNoteID)]?.textView)
+        editor.insertText("Current note", replacementRange: NSRange(location: 0, length: 0))
+        coordinator.reopen(wasAlreadyActive: true)
+        XCTAssertEqual(coordinator.session.notes.count, 3)
+        XCTAssertEqual(coordinator.session.activeNoteID, visibleBlankID)
+        XCTAssertFalse(try XCTUnwrap(coordinator.controllers[hiddenBlankID]?.window).isVisible)
+        try coordinator.flush()
+    }
 }

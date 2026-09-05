@@ -4,7 +4,9 @@
 
 `ScratchpadApplication` explicitly constructs `NSApplication` and its delegate. The regular activation policy and `LSUIElement = NO` give the running app a Dock icon and an entry in the app switcher. The menu bar status item remains available. `AppDelegate` owns the note coordinator and status item, installs the responder-chain menus, and flushes storage before termination.
 
-A Dock or Finder reopen brings existing visible notes forward. If every note is hidden, it reopens the most recently active one; if the workspace is empty, it creates a blank note. Normal startup still restores each note's saved visibility.
+A Dock or Finder reopen from another application brings existing visible notes forward. If every note is hidden, it reopens the most recently active one; if the workspace is empty, it creates a blank note. A Dock click while Scratchpad was already active instead provides an empty note: prefer the current empty note, then another visible empty note, then a hidden empty note, otherwise create a cascaded note. Empty means zero characters; whitespace remains note content. Normal startup still restores each note's saved visibility.
+
+`ReopenRequest` reads the `frnt` boolean in the reopen AppleEvent to distinguish an already-active click from a click that activates the app. This historical Dock event parameter is isolated here because it has no named SDK constant. Reading `NSApplication.isActive` in the delegate alone would confuse those cases when activation precedes event delivery. A missing or malformed flag conservatively retains the reveal behavior. The delegate's `hasVisibleWindows` flag is not used because AppKit does not count `NSPanel` windows there.
 
 The title-bar plus is a borderless `NSButton` in a trailing `NSTitlebarAccessoryViewController`, fitting inside the utility panel's original title-bar height. It accepts clicks on inactive notes and routes creation through the coordinator. Private APIs are permitted for this personal app, but this control uses public AppKit APIs.
 

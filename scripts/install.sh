@@ -4,9 +4,26 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 build_dir="$project_dir/build/Install"
-applications_dir="$HOME/Applications"
+applications_dir="/Applications"
 destination="$applications_dir/Scratchpad.app"
 bundle_id="me.nikstar.Scratchpad"
+
+# The command-line tools package cannot build an Xcode app. Use an installed
+# Xcode for this invocation without changing the machine's xcode-select setting.
+if ! xcodebuild -version >/dev/null 2>&1; then
+    if [[ -z "${DEVELOPER_DIR:-}" ]]; then
+        for developer_dir in /Applications/Xcode.app/Contents/Developer /Applications/Xcode-beta.app/Contents/Developer; do
+            if [[ -x "$developer_dir/usr/bin/xcodebuild" ]]; then
+                export DEVELOPER_DIR="$developer_dir"
+                break
+            fi
+        done
+    fi
+    if ! xcodebuild -version >/dev/null 2>&1; then
+        echo "A full Xcode installation is required. Set DEVELOPER_DIR to its Contents/Developer directory." >&2
+        exit 1
+    fi
+fi
 
 if [[ -e "$destination" || -L "$destination" ]]; then
     installed_id="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$destination/Contents/Info.plist" 2>/dev/null || true)"

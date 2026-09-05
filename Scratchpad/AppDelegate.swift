@@ -54,7 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        coordinator?.reopen()
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        coordinator?.reopen(wasAlreadyActive: ReopenRequest.wasAlreadyActive(event))
         return false
     }
 
