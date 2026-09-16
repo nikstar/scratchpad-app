@@ -36,6 +36,7 @@ If the selected developer tools are only Command Line Tools, the installer autom
 - First launch opens one blank note. Subsequent launches restore the existing workspace, including an intentionally empty workspace.
 - Notes use small, resizable `NSPanel` windows that remain visible when another app is active. They appear across Spaces, including alongside full-screen apps.
 - A small **+** in each note's title bar creates another note cascaded from that window. Keyboard/menu creation cascades from the current note. The control dims with an inactive window while remaining clickable.
+- A **magnifying glass** beside the plus doubles the note's font size and outer window width/height, keeping its top-right corner fixed. Click again to halve them. Each note remembers its magnification through relaunch and Recently Closed.
 - Scratchpad appears in the Dock and app switcher while running. The first Dock click brings the workspace forward. Clicking again while Scratchpad is already active focuses an existing empty note (including a hidden one), or creates a new cascaded note when none is empty.
 - The menu bar icon provides New Note, Show All, Hide All, current notes, Recently Closed, and Quit. Checkmarks identify visible current notes. Hide All only changes visibility.
 - Closing a window or pressing **⌘W** removes its note immediately, without a confirmation. **Recently Closed** retains the last 12 notes, newest close date first, across relaunches. Reopening restores its text, window placement, selection, and scroll position, and removes it from that submenu.

@@ -87,6 +87,10 @@ nonisolated final class SessionFile: Sendable {
             }
             let legacy = try JSONDecoder().decode(LegacySession.self, from: data)
             session = Session(notes: legacy.notes, windowOrder: legacy.windowOrder, activeNoteID: legacy.activeNoteID)
+        case 2:
+            var legacy = try JSONDecoder().decode(Session.self, from: data)
+            legacy.version = Session.currentVersion
+            session = legacy
         case Session.currentVersion:
             session = try JSONDecoder().decode(Session.self, from: data)
         default:

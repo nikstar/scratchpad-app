@@ -213,6 +213,13 @@ final class NoteCoordinator: NSObject {
             self.session.notes[index].placement = placement
             self.scheduleStateSave()
         }
+        controller.onMagnificationChange = { [weak self] magnified, placement, editor in
+            guard let self, !self.isRestoring, let index = self.index(id) else { return }
+            self.session.notes[index].isMagnified = magnified
+            self.session.notes[index].placement = placement
+            self.session.notes[index].editor = editor
+            self.persist()
+        }
         controller.onFocus = { [weak self] in
             guard let self, !self.isRestoring, self.index(id) != nil else { return }
             self.session.activeNoteID = id

@@ -42,13 +42,20 @@ nonisolated struct WindowPlacement: Codable, Equatable, Sendable {
 
     /// Preserve exact coordinates on an unchanged display. If a display moves or
     /// disappears, keep the note reachable without overwriting its saved placement.
-    func restoredFrame(on displays: [Display]) -> CGRect {
+    func restoredFrame(on displays: [Display], allowMagnifiedOverflow: Bool = false) -> CGRect {
         guard let first = displays.first else { return frame }
         let matching = displays.first { $0.id == displayID }
         let target = matching ?? displays.max {
             Self.overlap(frame, $0.visibleFrame) < Self.overlap(frame, $1.visibleFrame)
         } ?? first
         let visible = target.visibleFrame
+        // An anchored enlargement can deliberately extend left/below the screen.
+        // Restore it exactly on an unchanged display while its controls remain
+        // reachable. Changed/missing displays still use the normal recovery below.
+        if allowMagnifiedOverflow, matching != nil, displayVisibleFrame == visible,
+           visible.contains(CGPoint(x: frame.maxX - 1, y: frame.maxY - 1)) {
+            return frame
+        }
         var result = frame
         if matching != nil, let previous = displayVisibleFrame {
             result.origin.x += visible.minX - previous.minX

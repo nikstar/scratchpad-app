@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated struct Session: Codable, Equatable, Sendable {
-    static let currentVersion = 2
+    static let currentVersion = 3
     static let recentlyClosedLimit = 12
 
     var version = currentVersion
@@ -50,12 +50,26 @@ nonisolated struct Note: Codable, Equatable, Identifiable, Sendable {
     var isVisible = true
     var placement: WindowPlacement
     var editor = EditorState()
+    var isMagnified = false
 
     var title: String {
         let line = text.split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .first { !$0.isEmpty } ?? "New Note"
         return line.count > 44 ? String(line.prefix(44)) + "…" : line
+    }
+}
+
+extension Note {
+    nonisolated init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        text = try values.decode(String.self, forKey: .text)
+        isVisible = try values.decode(Bool.self, forKey: .isVisible)
+        placement = try values.decode(WindowPlacement.self, forKey: .placement)
+        editor = try values.decode(EditorState.self, forKey: .editor)
+        // Version 1/2 notes, including Recently Closed, start at normal size.
+        isMagnified = try values.decodeIfPresent(Bool.self, forKey: .isMagnified) ?? false
     }
 }
 

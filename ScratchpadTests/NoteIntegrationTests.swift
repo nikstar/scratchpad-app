@@ -130,6 +130,12 @@ final class NoteIntegrationTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(buttonFrame.minX, panel.frame.width - 40)
         XCTAssertLessThanOrEqual(buttonFrame.maxX, panel.frame.width)
         XCTAssertGreaterThanOrEqual(buttonFrame.minY, controller.scrollView.frame.maxY)
+        let magnifyFrame = panel.magnifyButton.convert(panel.magnifyButton.bounds, to: nil)
+        XCTAssertTrue(panel.magnifyButton.window === panel)
+        XCTAssertGreaterThanOrEqual(magnifyFrame.minX, 0)
+        XCTAssertLessThanOrEqual(magnifyFrame.maxX, buttonFrame.minX - 4)
+        XCTAssertGreaterThanOrEqual(magnifyFrame.minY, controller.scrollView.frame.maxY)
+        XCTAssertEqual(panel.magnifyButton.alphaValue, panel.newNoteButton.alphaValue)
         try coordinator.flush()
         XCTAssertEqual(try SessionFile(directory: directory).load().session.notes.count, 2)
     }

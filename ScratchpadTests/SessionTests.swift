@@ -129,6 +129,11 @@ final class SessionTests: XCTestCase {
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(session)) as? [String: Any])
         json["version"] = 1
         json.removeValue(forKey: "recentlyClosed")
+        json["notes"] = (json["notes"] as? [[String: Any]])?.map { note in
+            var note = note
+            note.removeValue(forKey: "isMagnified")
+            return note
+        }
         return try JSONSerialization.data(withJSONObject: json)
     }
 
@@ -141,7 +146,7 @@ final class SessionTests: XCTestCase {
         let migrated = try file.load()
         XCTAssertFalse(migrated.isFirstLaunch)
         XCTAssertEqual(migrated.session, expected)
-        XCTAssertEqual(migrated.session.version, 2)
+        XCTAssertEqual(migrated.session.version, Session.currentVersion)
         XCTAssertEqual(try Data(contentsOf: file.primaryURL), original)
         try file.write(migrated.session)
         XCTAssertEqual(try file.load().session, expected)
@@ -188,5 +193,33 @@ final class SessionTests: XCTestCase {
         session = exampleSession()
         session.recentlyClosed.append(session.recentlyClosed[0])
         XCTAssertThrowsError(try session.validate())
+    }
+
+    func testVersionTwoMigrationPreservesCurrentAndRecentlyClosedNotes() throws {
+        let file = SessionFile(directory: try temporaryDirectory())
+        let expected = exampleSession()
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(expected)) as? [String: Any])
+        json["version"] = 2
+        func legacyNote(_ note: [String: Any]) -> [String: Any] {
+            var note = note
+            note.removeValue(forKey: "isMagnified")
+            return note
+        }
+        json["notes"] = try XCTUnwrap(json["notes"] as? [[String: Any]]).map(legacyNote)
+        json["recentlyClosed"] = try XCTUnwrap(json["recentlyClosed"] as? [[String: Any]]).map { entry in
+            var entry = entry
+            entry["note"] = legacyNote(try XCTUnwrap(entry["note"] as? [String: Any]))
+            return entry
+        }
+        let original = try JSONSerialization.data(withJSONObject: json)
+        try original.write(to: file.primaryURL)
+        let migrated = try file.load().session
+        XCTAssertEqual(migrated, expected)
+        XCTAssertFalse(migrated.notes.contains(where: \.isMagnified))
+        XCTAssertFalse(migrated.recentlyClosed.contains { $0.note.isMagnified })
+        try file.write(migrated)
+        XCTAssertEqual(try Data(contentsOf: file.backupURL), original)
+        try Data("{incomplete".utf8).write(to: file.primaryURL)
+        XCTAssertEqual(try file.load().session, expected)
     }
 }

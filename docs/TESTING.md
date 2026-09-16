@@ -32,6 +32,7 @@ Run the shared Scratchpad scheme's tests with Product → Test or the `xcodebuil
 13. Run `scripts/install.sh` from outside the repository, then repeat with the installed app running. Confirm graceful quit, successful replacement, valid sandbox entitlements, and unchanged saved notes.
 14. Move and resize a note away from the screen center. Press its plus while another note is current, then use ⌘N: each new title bar should be offset 22 points down and right from its source. Near screen edges, verify the new note remains reachable on that display.
 15. Switch between notes and then to another app. The title-bar plus should dim with the inactive title, remain clickable, and retain its trailing inset at minimum window size.
+16. Click the magnifier: font and outer window dimensions should double around the fixed top-right corner. Click again to halve them, including after a manual resize. Check both buttons at minimum size and in inactive notes. Relaunch and reopen from Recently Closed while magnified; verify the same scale, frame, text, selection, and scroll position.
 
 Tests establish data and local AppKit behavior. Multi-display hardware changes, full-screen Spaces, system shutdown, and power loss still require dedicated manual checks.
 
@@ -68,3 +69,10 @@ Tests establish data and local AppKit behavior. Multi-display hardware changes, 
 - All 36 XCTest cases passed. Coverage includes nonempty close without confirmation, released window controllers, exact text/frame/selection/scroll recovery, reopening from the menu with no current windows, re-closing at the top of history, stale close/reopen actions, and persistence of the 12-entry limit.
 - History is checked against close timestamps rather than note creation order. Version 1 sessions and backups migrate with every existing note and visibility flag intact; malformed archived state is rejected.
 - Installed and signature-verified the Release build at `/Applications/Scratchpad.app`. Launched, quit normally with ⌘Q, and relaunched. The live session migrated to version 2 with all seven current note records, window order, and active note unchanged, and no entries added to Recently Closed.
+
+## Note magnification — 2026-09-16
+
+- All 42 XCTest cases passed. New coverage checks doubled/halved font and outer dimensions, the fixed top-right anchor, inactive-source routing, minimum-size controls, manual resizing, unchanged text/selection and undo, scroll scaling, magnified typing, relaunch, and Recently Closed.
+- Screen-edge and oversized-window cases verify exact anchored enlargement and restoration. Version 1/2 migration keeps current and recently closed notes intact at normal scale; version 2 backup recovery is also covered.
+- Installed and signature-verified the Release app in `/Applications`. Visually clicked the magnifier in both directions: a 252 × 361 window became 504 × 722 at the same top-right corner, then returned to its exact original frame. All current note texts were unchanged. The app is left running at the original scale.
+- No Swift compiler warnings in the final builds; Xcode still emits its standard skipped App Intents metadata notice.

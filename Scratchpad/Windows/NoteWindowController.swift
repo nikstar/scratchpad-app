@@ -10,13 +10,18 @@ final class NoteWindowController: NSWindowController, NSWindowDelegate, NSTextVi
     var onFocus: (() -> Void)?
     var onClose: (() -> Void)?
     var onNewNote: (() -> Void)?
+    var onMagnificationChange: ((Bool, WindowPlacement, EditorState) -> Void)?
+    private(set) var isMagnified: Bool
     private var isApplyingState = true
 
     init(note: Note, displays: [Display]) {
         noteID = note.id
+        isMagnified = note.isMagnified
         let panel = NotePanel()
         super.init(window: panel)
         panel.onNewNote = { [weak self] in self?.onNewNote?() }
+        panel.onToggleMagnification = { [weak self] in self?.toggleMagnification() }
+        panel.setMagnified(note.isMagnified)
         panel.delegate = self
         panel.title = note.title
         panel.identifier = NSUserInterfaceItemIdentifier(note.id.uuidString)
@@ -30,7 +35,7 @@ final class NoteWindowController: NSWindowController, NSWindowDelegate, NSTextVi
         textView.isRichText = false
         textView.importsGraphics = false
         textView.allowsUndo = true
-        textView.font = .systemFont(ofSize: 13)
+        textView.font = .systemFont(ofSize: note.isMagnified ? 26 : 13)
         textView.textColor = .textColor
         textView.backgroundColor = .textBackgroundColor
         textView.textContainerInset = NSSize(width: 10, height: 10)
@@ -52,7 +57,7 @@ final class NoteWindowController: NSWindowController, NSWindowDelegate, NSTextVi
         textView.string = note.text
         scrollView.documentView = textView
         panel.contentView = scrollView
-        panel.setFrame(note.placement.restoredFrame(on: displays), display: false)
+        panel.setFrame(note.placement.restoredFrame(on: displays, allowMagnifiedOverflow: isMagnified), display: false)
         textView.frame.size.width = scrollView.contentSize.width
         textView.delegate = self
         panel.initialFirstResponder = textView
@@ -90,9 +95,34 @@ final class NoteWindowController: NSWindowController, NSWindowDelegate, NSTextVi
 
     func hide() { window?.orderOut(nil) }
 
+    private func toggleMagnification() {
+        guard let panel = window as? NotePanel else { return }
+        let factor: CGFloat = isMagnified ? 0.5 : 2
+        let original = panel.frame
+        let size = NSSize(width: original.width * factor, height: original.height * factor)
+        let target = NSRect(x: original.maxX - size.width, y: original.maxY - size.height,
+                            width: size.width, height: size.height)
+        var editor = editorState
+        editor.scrollY *= Double(factor)
+        isApplyingState = true
+        isMagnified.toggle()
+        panel.setMagnified(isMagnified)
+        let font = NSFont.systemFont(ofSize: isMagnified ? 26 : 13)
+        textView.font = font
+        textView.typingAttributes[.font] = font
+        panel.setFrame(target, display: true)
+        restoreEditor(editor)
+        isApplyingState = false
+        // Save the flag, final placement, and editor state as one snapshot.
+        onMagnificationChange?(isMagnified, WindowPlacement(
+            frame: panel.frame, displayID: panel.screen?.displayID,
+            displayVisibleFrame: panel.screen?.visibleFrame
+        ), editorState)
+    }
+
     func applyPlacement(_ placement: WindowPlacement, displays: [Display]) {
         isApplyingState = true
-        window?.setFrame(placement.restoredFrame(on: displays), display: true)
+        window?.setFrame(placement.restoredFrame(on: displays, allowMagnifiedOverflow: isMagnified), display: true)
         isApplyingState = false
     }
 

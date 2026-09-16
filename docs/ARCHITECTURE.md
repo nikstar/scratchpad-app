@@ -8,7 +8,11 @@ A Dock or Finder reopen from another application brings existing visible notes f
 
 `ReopenRequest` reads the `frnt` boolean in the reopen AppleEvent to distinguish an already-active click from a click that activates the app. This historical Dock event parameter is isolated here because it has no named SDK constant. Reading `NSApplication.isActive` in the delegate alone would confuse those cases when activation precedes event delivery. A missing or malformed flag conservatively retains the reveal behavior. The delegate's `hasVisibleWindows` flag is not used because AppKit does not count `NSPanel` windows there.
 
-The title-bar plus is a borderless `NSButton` in a trailing `NSTitlebarAccessoryViewController`, fitting inside the utility panel's original title-bar height. It accepts clicks on inactive notes and routes creation through the coordinator. Private APIs are permitted for this personal app, but this control uses public AppKit APIs.
+The title-bar plus and magnifier are borderless `NSButton`s in a trailing `NSTitlebarAccessoryViewController`, fitting inside the utility panel's original title-bar height. They accept clicks on inactive notes; the plus routes creation through the coordinator. Private APIs are permitted for this personal app, but these controls use public AppKit APIs.
+
+Magnification switches plain text between 13 and 26 points and multiplies the current outer window size by 2 or 0.5. The new origin is `(old.maxX - new.width, old.maxY - new.height)`, so the top-right corner and title-bar controls stay anchored. Minimum outer size scales with magnification so a manually resized enlarged note can still halve cleanly. Selection is preserved and the vertical scroll offset scales with the text. The controller suppresses intermediate resize/editor notifications and sends one update containing magnification, placement, and editor state to the coordinator. New notes always start at normal scale.
+
+An enlargement near the left or bottom edge may extend beyond the display to preserve the requested dimensions and anchor. On an unchanged display, a magnified note restores that exact frame while its top-right controls remain reachable. `NotePanel` uses the public `constrainFrameRect` override to allow this placement, including when AppKit provides no screen during first presentation. Missing or changed displays still use normal placement recovery.
 
 Plus-button creation carries the source note's identity explicitly, so pressing it on an inactive panel still cascades from that panel. Keyboard/menu creation uses the key note or most recently focused visible note. Placement uses the source window's current top-left corner and display with a 22-point cascade offset, wrapping at display edges. The default note size is unchanged. With no visible source, the first note is centered on the pointer's display. Title-bar controls use the system secondary text color and dim to 45% opacity while their window or the app is inactive, without disabling interaction. View opacity is applied explicitly because symbol tinting in the title bar does not reliably preserve a semantic color's alpha.
 
@@ -26,6 +30,7 @@ The versioned `Session` records:
 - Outer window frames in AppKit screen coordinates, display IDs, and previous display visible frames.
 - Individual visibility, relative back-to-front order, and the most recently focused note.
 - UTF-16 selection ranges and vertical scroll offsets.
+- Per-note magnification, including recently closed notes; the saved frame already includes its current scale and is never doubled again at launch.
 - Recently closed note snapshots and their close timestamps, with a maximum of 12 and no duplicate IDs across current/history entries.
 
 On an unchanged display arrangement, frames are restored exactly. When a display moves, coordinates are translated relative to its saved visible frame. If a display is missing or smaller, the window is moved/resized onto an available display. Automatic repositioning does not intentionally overwrite the preferred placement; a subsequent user move or resize establishes a new placement.
@@ -48,7 +53,9 @@ If the primary file is unreadable, a valid backup is loaded, the bad primary is 
 
 Write failures are surfaced through the menu bar icon and a retry action. A failed final flush keeps the app open unless the user explicitly chooses Quit Anyway. The storage schema is versioned; future model changes must include a migration or explicitly reject incompatible data.
 
-Schema version 2 adds `recentlyClosed`. `SessionFile` migrates version 1 in memory, preserving every existing note, visibility flag, frame, and editor state, with an empty close history. Previously hidden notes remain current notes: version 1 has no close dates, so migration does not guess which notes belong in a limited history. The next write uses version 2 and retains the prior validated file as a backup. Version 1 backups remain readable; future or unknown versions are still rejected without replacement.
+Schema version 2 added `recentlyClosed`. `SessionFile` migrates version 1 in memory, preserving every existing note, visibility flag, frame, and editor state, with an empty close history. Previously hidden notes remain current notes: version 1 has no close dates, so migration does not guess which notes belong in a limited history. The next write uses the current schema and retains the prior validated file as a backup. Version 1 backups remain readable; future or unknown versions are still rejected without replacement.
+
+Schema version 3 adds the note's `isMagnified` flag. Versions 1 and 2 migrate in memory to version 3 with missing flags defaulting to false, preserving all current notes, close history, and editor/window state. Subsequent writes use version 3; the previous validated file is retained as the backup, and older backups still migrate on recovery.
 
 ## Concurrency
 
