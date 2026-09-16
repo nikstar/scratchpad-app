@@ -76,3 +76,9 @@ Tests establish data and local AppKit behavior. Multi-display hardware changes, 
 - Screen-edge and oversized-window cases verify exact anchored enlargement and restoration. Version 1/2 migration keeps current and recently closed notes intact at normal scale; version 2 backup recovery is also covered.
 - Installed and signature-verified the Release app in `/Applications`. Visually clicked the magnifier in both directions: a 252 × 361 window became 504 × 722 at the same top-right corner, then returned to its exact original frame. All current note texts were unchanged. The app is left running at the original scale.
 - No Swift compiler warnings in the final builds; Xcode still emits its standard skipped App Intents metadata notice.
+
+## Layered Dock icon — 2026-09-16
+
+- Authored four original SVG layers in `Scratchpad/Scratchpad.icon` and opened the document successfully in Icon Composer. Checked default, dark, mono/clear, 64-pixel Dock size, and the previous design generation with Apple's `ictool` renderer. Added an explicit dark-appearance ink override so the face remains visible.
+- Release build and installation succeeded. The installed app's icon name/file are both `Scratchpad`; its compiled asset catalog contains vector layers, icon groups, and image stacks, and the generated `Scratchpad.icns` was visually checked. Code signature validation passed.
+- This change only affects artwork and icon build configuration; no application logic or persistence changes were made. Validation used the release resource compiler and rendered appearances rather than repeating the application unit suite.

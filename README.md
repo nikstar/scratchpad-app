@@ -4,6 +4,8 @@ A small native macOS home for temporary text. Each note is a compact floating pa
 
 Built with Swift and AppKit only. All windows, menus, and text views are created in code; there are no storyboards, nibs, SwiftUI views, or external dependencies.
 
+The Dock icon is an original layered vector design in `Scratchpad/Scratchpad.icon`, editable with Icon Composer. See [icon artwork and previews](docs/ICON.md).
+
 ## Development
 
 Open `Scratchpad.xcodeproj`, select the shared **Scratchpad** scheme, and run. The project retains its original bundle identifier, signing team, and macOS 26.6 deployment target. The current toolchain is Xcode 27.
