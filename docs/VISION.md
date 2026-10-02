@@ -37,7 +37,7 @@ Rich text, Markdown rendering, syntax highlighting, document saving/export, sync
 - Follow the system appearance and use native controls until the visual direction is provided.
 - Distribution is personal, outside the App Store. Private APIs are permitted where they help achieve the intended behavior; keep those uses isolated and documented.
 - Release builds install to `/Applications/Scratchpad.app`.
-- The Dock icon is a smiling butter-yellow sticky note with a curled corner and a lilac sheet behind it, built from original vector layers in the native `.icon` format.
+- The Dock icon is a ginger cat using a scratching pad, in a sunlit green room. Use the supplied native Icon Composer document without changing its artwork or settings.
 
 ## Design questions for later
 
@@ -51,3 +51,4 @@ Panel chrome; note colors/materials; typography; menu versus popover management;
 - **2026-09-05:** Make closing remove a note and replace Delete with Recently Closed: retain 12 entries in reverse chronological order by close date. Quit preserves the workspace. Reopening restores a note and removes it from the recent list.
 - **2026-09-16:** Add a title-bar magnifier that doubles/halves font and window dimensions with the top-right corner anchored. Remember each note's magnification.
 - **2026-09-16:** Give Scratchpad a playful paper-pal Dock icon, with editable vector layers and native Icon Composer appearances.
+- **2026-10-02:** Replace the paper-pal icon with Nikita's supplied cat icon. Give the GitHub README a matching icon-and-wordmark header, with light and dark appearances.

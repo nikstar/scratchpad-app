@@ -1,10 +1,15 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/artwork/header-dark.png">
+  <img alt="Scratchpad — Tiny notes for macOS" src="docs/artwork/header-light.png" width="850">
+</picture>
+
 # Scratchpad
 
 A small native macOS home for temporary text. Each note is a compact floating panel, with a menu bar icon to create, find, and reopen recently closed notes. Text and workspace state are restored automatically. There are no documents to name, open, or save.
 
 Built with Swift and AppKit only. All windows, menus, and text views are created in code; there are no storyboards, nibs, SwiftUI views, or external dependencies.
 
-The Dock icon is an original layered vector design in `Scratchpad/Scratchpad.icon`, editable with Icon Composer. See [icon artwork and previews](docs/ICON.md).
+The Dock icon is a cat with a scratchpad of its own, packaged in the native `.icon` format and editable with Icon Composer. See [icon artwork and previews](docs/ICON.md).
 
 ## Development
 

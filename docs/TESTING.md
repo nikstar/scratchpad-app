@@ -82,3 +82,10 @@ Tests establish data and local AppKit behavior. Multi-display hardware changes, 
 - Authored four original SVG layers in `Scratchpad/Scratchpad.icon` and opened the document successfully in Icon Composer. Checked default, dark, mono/clear, 64-pixel Dock size, and the previous design generation with Apple's `ictool` renderer. Added an explicit dark-appearance ink override so the face remains visible.
 - Release build and installation succeeded. The installed app's icon name/file are both `Scratchpad`; its compiled asset catalog contains vector layers, icon groups, and image stacks, and the generated `Scratchpad.icns` was visually checked. Code signature validation passed.
 - This change only affects artwork and icon build configuration; no application logic or persistence changes were made. Validation used the release resource compiler and rendered appearances rather than repeating the application unit suite.
+
+## Supplied cat icon and README header — 2026-10-02
+
+- Replaced the icon with Nikita's supplied `.icon` bundle and verified an exact file-for-file match. Rendered its native appearances with `ictool` and visually checked the default, dark, and 64-pixel Dock previews.
+- Built and installed Release at `/Applications/Scratchpad.app`. Code signature validation passed; the installed asset catalog matches the release build and includes the new icon image and native icon groups. The installer verified the sandbox entitlement and completed its normal quit step.
+- Generated transparent light and dark README headers from the native icon preview, with system fonts. Checked the rendered images, dimensions, and matching icon pixels in both versions.
+- No application behavior or persistence changes. Validation used the release build, compiled icon resources, and artwork checks; the application unit suite was not repeated.
