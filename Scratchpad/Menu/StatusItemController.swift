@@ -1,6 +1,6 @@
 import AppKit
 
-final class StatusItemController: NSObject, NSMenuDelegate {
+final class StatusItemController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     let statusItem: NSStatusItem
     private let coordinator: NoteCoordinator
     private var writeError: Error?
@@ -46,6 +46,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(new)
         menu.addItem(item("Show All Notes", action: #selector(showAll)))
         menu.addItem(item("Hide All Notes", action: #selector(hideAll)))
+        let home = item("Use This Position for New Notes", action: #selector(usePositionForNewNotes))
+        // Capture the source while opening the menu; focus can change during tracking.
+        home.representedObject = coordinator.currentVisibleNoteID
+        home.isEnabled = home.representedObject != nil
+        if let id = home.representedObject as? UUID,
+           let note = coordinator.session.notes.first(where: { $0.id == id }) {
+            home.toolTip = "Use the position of “\(note.title)” when no notes are visible."
+        } else {
+            home.toolTip = "Select a visible note to choose where new notes start."
+        }
+        menu.addItem(home)
         menu.addItem(.separator())
         menu.addItem(.sectionHeader(title: "Notes"))
 
@@ -91,6 +102,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func showAll(_ sender: Any?) { coordinator.showAllNotes() }
     @objc private func hideAll(_ sender: Any?) { coordinator.hideAllNotes() }
     @objc private func quit(_ sender: Any?) { NSApp.terminate(nil) }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard menuItem.action == #selector(usePositionForNewNotes) else { return true }
+        guard let id = menuItem.representedObject as? UUID else { return false }
+        return coordinator.controllers[id]?.window?.isVisible == true
+    }
+
+    @objc private func usePositionForNewNotes(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        coordinator.usePositionForNewNotes(of: id)
+    }
 
     @objc private func openNote(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? UUID else { return }

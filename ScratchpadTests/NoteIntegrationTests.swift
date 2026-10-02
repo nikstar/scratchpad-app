@@ -105,7 +105,10 @@ final class NoteIntegrationTests: XCTestCase {
         XCTAssertTrue(coordinator.session.notes[0].isVisible)
         XCTAssertFalse(coordinator.session.notes[1].isVisible)
         status.menuNeedsUpdate(menu)
-        XCTAssertEqual(menu.items.first { $0.representedObject as? UUID == firstID }?.state, .on)
+        // The home-position action also carries the selected note's ID.
+        XCTAssertEqual(menu.items.first {
+            $0.representedObject as? UUID == firstID && $0.action == NSSelectorFromString("openNote:")
+        }?.state, .on)
         try coordinator.flush()
     }
 

@@ -31,6 +31,7 @@ Rich text, Markdown rendering, syntax highlighting, document saving/export, sync
 - Keep a small plus button at the trailing edge of each title bar to create another note without adding a toolbar or increasing the panel height.
 - A magnifying glass beside the plus toggles between 13-point and 26-point text, doubling/halving the current outer window width and height around its fixed top-right corner. Magnification is independent per note and persists through relaunch and Recently Closed. Both controls stay compact and dim when inactive.
 - New notes cascade 22 points down and right from the note whose plus was pressed, or from the current note for keyboard/menu creation. Title-bar controls dim with inactive windows and remain clickable.
+- “Use This Position for New Notes” in the menu bar menu explicitly sets a home position from the current visible note. With no visible note to cascade from, a new note uses that home. Remember the chosen display and offsets from the nearest usable screen edges; if the display is missing, use the pointer's display and keep the note visible. Moving, resizing, hiding, or closing notes never changes the home. This sets position only; new notes retain their default size and normal magnification. Until a home is chosen, retain centered placement.
 - Default to a 280 × 220 point outer window, resizable down to a 160 × 90 point content area.
 - Panels float above ordinary windows and are available across Spaces. There is no per-Space assignment in this version.
 - First launch creates one blank note. An intentionally empty or entirely hidden workspace stays that way after relaunch.
@@ -41,7 +42,7 @@ Rich text, Markdown rendering, syntax highlighting, document saving/export, sync
 
 ## Design questions for later
 
-Panel chrome; note colors/materials; typography; menu versus popover management; default size and placement; whether floating should become optional; whether a global new-note shortcut is useful.
+Panel chrome; note colors/materials; typography; menu versus popover management; default size; whether floating should become optional; whether a global new-note shortcut is useful.
 
 ## Decision log
 
@@ -52,3 +53,4 @@ Panel chrome; note colors/materials; typography; menu versus popover management;
 - **2026-09-16:** Add a title-bar magnifier that doubles/halves font and window dimensions with the top-right corner anchored. Remember each note's magnification.
 - **2026-09-16:** Give Scratchpad a playful paper-pal Dock icon, with editable vector layers and native Icon Composer appearances.
 - **2026-10-02:** Replace the paper-pal icon with Nikita's supplied cat icon. Give the GitHub README a matching icon-and-wordmark header, with light and dark appearances.
+- **2026-10-02:** Add an explicitly chosen home for new notes when no notes are visible. Keep it independent of note movement and closure, anchor it to the nearest screen edges, and retain cascading from visible notes.

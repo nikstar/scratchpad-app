@@ -7,13 +7,15 @@ nonisolated struct Display: Sendable {
 }
 
 nonisolated struct WindowPlacement: Codable, Equatable, Sendable {
+    static let defaultNoteSize = CGSize(width: 280, height: 220)
+
     var frame: CGRect
     var displayID: UInt32?
     var displayVisibleFrame: CGRect?
 
     static func newNote(relativeTo source: CGRect?, on display: Display) -> Self {
         let visible = display.visibleFrame
-        let size = CGSize(width: 280, height: 220)
+        let size = defaultNoteSize
         let step: CGFloat = 22
         var frame = CGRect(
             x: visible.midX - size.width / 2,
@@ -71,5 +73,52 @@ nonisolated struct WindowPlacement: Codable, Equatable, Sendable {
     private static func overlap(_ lhs: CGRect, _ rhs: CGRect) -> CGFloat {
         let intersection = lhs.intersection(rhs)
         return intersection.isNull ? 0 : intersection.width * intersection.height
+    }
+}
+
+/// An explicitly chosen starting position, independent of any note's lifetime.
+/// Insets use the display's usable area so the Dock and menu bar stay clear.
+nonisolated struct NoteHomePosition: Codable, Equatable, Sendable {
+    enum HorizontalEdge: String, Codable { case left, right }
+    enum VerticalEdge: String, Codable { case bottom, top }
+
+    var displayID: UInt32
+    var horizontalEdge: HorizontalEdge
+    var verticalEdge: VerticalEdge
+    var horizontalInset: CGFloat
+    var verticalInset: CGFloat
+
+    init(frame: CGRect, on display: Display) {
+        displayID = display.id
+        let visible = display.visibleFrame
+        let left = frame.minX - visible.minX
+        let right = visible.maxX - frame.maxX
+        let bottom = frame.minY - visible.minY
+        let top = visible.maxY - frame.maxY
+        // Absolute distances also handle a magnified note extending offscreen.
+        horizontalEdge = abs(left) < abs(right) ? .left : .right
+        verticalEdge = abs(bottom) < abs(top) ? .bottom : .top
+        horizontalInset = max(0, horizontalEdge == .left ? left : right)
+        verticalInset = max(0, verticalEdge == .bottom ? bottom : top)
+    }
+
+    var isValid: Bool {
+        horizontalInset.isFinite && horizontalInset >= 0
+            && verticalInset.isFinite && verticalInset >= 0
+    }
+
+    func placement(on displays: [Display], fallback: Display) -> WindowPlacement {
+        let display = displays.first { $0.id == displayID } ?? fallback
+        let visible = display.visibleFrame
+        let size = CGSize(width: min(WindowPlacement.defaultNoteSize.width, visible.width),
+                          height: min(WindowPlacement.defaultNoteSize.height, visible.height))
+        let xInset = min(horizontalInset, visible.width - size.width)
+        let yInset = min(verticalInset, visible.height - size.height)
+        let frame = CGRect(
+            x: horizontalEdge == .left ? visible.minX + xInset : visible.maxX - xInset - size.width,
+            y: verticalEdge == .bottom ? visible.minY + yInset : visible.maxY - yInset - size.height,
+            width: size.width, height: size.height
+        )
+        return WindowPlacement(frame: frame, displayID: display.id, displayVisibleFrame: visible)
     }
 }

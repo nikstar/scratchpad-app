@@ -40,11 +40,23 @@ final class NoteCoordinator: NSObject {
         if recoveredFromBackup { persist() }
     }
 
+    var currentVisibleNoteID: UUID? {
+        controllers.first { $0.value.window?.isKeyWindow == true && $0.value.window?.isVisible == true }?.key
+            ?? session.activeNoteID.flatMap { controllers[$0]?.window?.isVisible == true ? $0 : nil }
+            ?? session.windowOrder.reversed().first { controllers[$0]?.window?.isVisible == true }
+    }
+
     @objc func createNote(_ sender: Any? = nil) {
-        let current = controllers.values.first { $0.window?.isKeyWindow == true }?.window
-            ?? session.activeNoteID.flatMap { controllers[$0]?.window }.flatMap { $0.isVisible ? $0 : nil }
-            ?? session.windowOrder.reversed().compactMap { controllers[$0]?.window }.first { $0.isVisible }
-        createNote(relativeTo: current)
+        createNote(relativeTo: currentVisibleNoteID.flatMap { controllers[$0]?.window })
+    }
+
+    func usePositionForNewNotes(of id: UUID) {
+        guard let window = controllers[id]?.window, window.isVisible, let screen = window.screen else { return }
+        // Read the live frame, including a move whose debounced save is pending.
+        session.newNoteHome = NoteHomePosition(
+            frame: window.frame, on: Display(id: screen.displayID, visibleFrame: screen.visibleFrame)
+        )
+        persist()
     }
 
     private func createNote(relativeTo source: NSWindow?) {
@@ -54,7 +66,12 @@ final class NoteCoordinator: NSObject {
             id: screen?.displayID ?? 0,
             visibleFrame: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1200, height: 800)
         )
-        let placement = WindowPlacement.newNote(relativeTo: source?.frame, on: display)
+        let placement: WindowPlacement
+        if source == nil, let home = session.newNoteHome {
+            placement = home.placement(on: NSScreen.noteDisplays, fallback: display)
+        } else {
+            placement = WindowPlacement.newNote(relativeTo: source?.frame, on: display)
+        }
         let note = Note(placement: placement)
         session.notes.append(note)
         session.windowOrder.append(note.id)

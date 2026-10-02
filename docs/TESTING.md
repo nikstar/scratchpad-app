@@ -14,6 +14,8 @@ Run the shared Scratchpad scheme's tests with Product → Test or the `xcodebuil
 - AppKit integration checks text editing, panel behavior, hiding/revealing, closing/reopening, and recreation from disk.
 - Recently Closed survives disk round trips, sorts by close date, retains only 12 entries, and restores through the menu even when no current windows exist.
 - Version 1 sessions and backups migrate without losing hidden notes or restoration state. Quitting preserves current notes without adding history entries.
+- Home positions survive closure, an empty workspace, and relaunch. Visible notes still cascade; existing and recently closed notes retain their own placements. Menu actions capture the intended source and reject hidden/closed sources.
+- Home placement preserves edge insets on moved/resized displays, uses the pointer's display when the preferred one is missing, and clamps to smaller usable areas without changing the saved preference. Version 3 migration preserves magnification and leaves the home unconfigured; invalid home insets cannot overwrite saved state.
 
 ## Manual regression checklist
 
@@ -33,6 +35,7 @@ Run the shared Scratchpad scheme's tests with Product → Test or the `xcodebuil
 14. Move and resize a note away from the screen center. Press its plus while another note is current, then use ⌘N: each new title bar should be offset 22 points down and right from its source. Near screen edges, verify the new note remains reachable on that display.
 15. Switch between notes and then to another app. The title-bar plus should dim with the inactive title, remain clickable, and retain its trailing inset at minimum window size.
 16. Click the magnifier: font and outer window dimensions should double around the fixed top-right corner. Click again to halve them, including after a manual resize. Check both buttons at minimum size and in inactive notes. Relaunch and reopen from Recently Closed while magnified; verify the same scale, frame, text, selection, and scroll position.
+17. Place a note near a screen edge and choose **Use This Position for New Notes** from the menu bar. Move it elsewhere and close it; a new note in the empty workspace should use the chosen position. Repeat after relaunch and after Hide All. With visible notes, verify plus/⌘N still cascade. The command should be disabled when no notes are visible. Change resolution or disconnect/reconnect the chosen display and verify edge placement and the original home are retained.
 
 Tests establish data and local AppKit behavior. Multi-display hardware changes, full-screen Spaces, system shutdown, and power loss still require dedicated manual checks.
 
@@ -89,3 +92,10 @@ Tests establish data and local AppKit behavior. Multi-display hardware changes, 
 - Built and installed Release at `/Applications/Scratchpad.app`. Code signature validation passed; the installed asset catalog matches the release build and includes the new icon image and native icon groups. The installer verified the sandbox entitlement and completed its normal quit step.
 - Generated transparent light and dark README headers from the native icon preview, with system fonts. Checked the rendered images, dimensions, and matching icon pixels in both versions.
 - No application behavior or persistence changes. Validation used the release build, compiled icon resources, and artwork checks; the application unit suite was not repeated.
+
+## Home position for new notes — 2026-10-03
+
+- All 51 XCTest cases passed. Coverage includes explicit menu selection, ignoring stale or hidden sources, unchanged cascading, closure/relaunch with an empty workspace, Recently Closed placement, preferred-display selection, edge insets after display changes, and fallback without overwriting the home.
+- Storage version 4 round trips preserve the home; version 1–3 migrations preserve existing notes and leave it unconfigured. Invalid insets cannot overwrite saved state, and backup recovery retains the preference.
+- Built and installed Release in `/Applications/Scratchpad.app`; its code signature verified successfully. The additional computer-use inspection stalled and was interrupted. Nikita confirmed the installed behavior.
+- Physical display disconnect/reconnect remains a manual check; automated tests exercise the corresponding display geometries.

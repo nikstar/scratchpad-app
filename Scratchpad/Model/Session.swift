@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated struct Session: Codable, Equatable, Sendable {
-    static let currentVersion = 3
+    static let currentVersion = 4
     static let recentlyClosedLimit = 12
 
     var version = currentVersion
@@ -11,6 +11,8 @@ nonisolated struct Session: Codable, Equatable, Sendable {
     var activeNoteID: UUID?
     /// Most recently closed first. These notes have no live window controller.
     var recentlyClosed: [ClosedNote] = []
+    /// Only an explicit menu action changes the home for newly created notes.
+    var newNoteHome: NoteHomePosition?
 
     mutating func rememberClosed(_ note: Note, at date: Date = Date()) {
         recentlyClosed.insert(ClosedNote(note: note, closedAt: date), at: 0)
@@ -33,6 +35,7 @@ nonisolated struct Session: Codable, Equatable, Sendable {
               Set(windowOrder).count == windowOrder.count,
               Set(windowOrder).isSubset(of: ids),
               activeNoteID.map({ ids.contains($0) }) ?? true,
+              newNoteHome?.isValid ?? true,
               (notes + recentlyClosed.map(\.note)).allSatisfy({ $0.placement.isValid && $0.editor.isValid }) else {
             throw SessionError.invalidContents
         }

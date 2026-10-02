@@ -30,7 +30,9 @@ final class SessionTests: XCTestCase {
 
     func testFullWorkspaceRoundTrip() throws {
         let file = SessionFile(directory: try temporaryDirectory())
-        let original = exampleSession()
+        var original = exampleSession()
+        original.newNoteHome = NoteHomePosition(frame: original.notes[0].placement.frame,
+                                               on: Display(id: 7, visibleFrame: original.notes[0].placement.displayVisibleFrame!))
         try file.write(original)
         let loaded = try file.load()
         XCTAssertEqual(loaded.session, original)
@@ -49,7 +51,9 @@ final class SessionTests: XCTestCase {
     func testCorruptPrimaryRecoversBackupAndPreservesOriginal() throws {
         let directory = try temporaryDirectory()
         let file = SessionFile(directory: directory)
-        let original = exampleSession()
+        var original = exampleSession()
+        original.newNoteHome = NoteHomePosition(frame: original.notes[0].placement.frame,
+                                               on: Display(id: 7, visibleFrame: original.notes[0].placement.displayVisibleFrame!))
         try file.write(original)
         var next = original
         next.notes[0].text = "Newer snapshot"
@@ -221,5 +225,44 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: file.backupURL), original)
         try Data("{incomplete".utf8).write(to: file.primaryURL)
         XCTAssertEqual(try file.load().session, expected)
+    }
+
+    func testVersionThreeMigrationPreservesWorkspaceAndLeavesHomeUnconfigured() throws {
+        let file = SessionFile(directory: try temporaryDirectory())
+        var expected = exampleSession()
+        expected.notes[0].isMagnified = true
+        expected.recentlyClosed[0].note.isMagnified = true
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(expected)) as? [String: Any])
+        json["version"] = 3
+        json.removeValue(forKey: "newNoteHome")
+        let original = try JSONSerialization.data(withJSONObject: json)
+        try original.write(to: file.primaryURL)
+        let migrated = try file.load().session
+        XCTAssertEqual(migrated, expected)
+        XCTAssertNil(migrated.newNoteHome)
+        XCTAssertEqual(try Data(contentsOf: file.primaryURL), original)
+        try file.write(migrated)
+        XCTAssertEqual(try Data(contentsOf: file.backupURL), original)
+        try Data("{incomplete".utf8).write(to: file.primaryURL)
+        let recovered = try file.load()
+        XCTAssertTrue(recovered.recoveredFromBackup)
+        XCTAssertEqual(recovered.session, expected)
+    }
+
+    func testInvalidHomeInsetsAreRejectedWithoutReplacingSavedState() throws {
+        let file = SessionFile(directory: try temporaryDirectory())
+        let original = exampleSession()
+        try file.write(original)
+        for invalid in [CGFloat(-1), .infinity, .nan] {
+            for horizontal in [true, false] {
+                var session = original
+                var home = NoteHomePosition(frame: original.notes[0].placement.frame,
+                                            on: Display(id: 7, visibleFrame: original.notes[0].placement.displayVisibleFrame!))
+                if horizontal { home.horizontalInset = invalid } else { home.verticalInset = invalid }
+                session.newNoteHome = home
+                XCTAssertThrowsError(try file.write(session))
+                XCTAssertEqual(try file.load().session, original)
+            }
+        }
     }
 }
