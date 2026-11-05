@@ -13,21 +13,25 @@ nonisolated struct WindowPlacement: Codable, Equatable, Sendable {
     var displayID: UInt32?
     var displayVisibleFrame: CGRect?
 
-    static func newNote(relativeTo source: CGRect?, on display: Display) -> Self {
+    static func newNote(relativeTo source: CGRect?, on display: Display, fallback: Self? = nil) -> Self {
         let visible = display.visibleFrame
         let size = defaultNoteSize
         let step: CGFloat = 22
-        var frame = CGRect(
+        if let source {
+            // Cascade the title bars only when the whole new note fits.
+            let frame = CGRect(x: source.minX + step, y: source.maxY - step - size.height,
+                               width: size.width, height: size.height)
+            if visible.contains(frame) {
+                return Self(frame: frame, displayID: display.id, displayVisibleFrame: visible)
+            }
+        }
+        // Reuse the normal starting position instead of wrapping to another edge.
+        if let fallback { return fallback }
+        let frame = CGRect(
             x: visible.midX - size.width / 2,
             y: visible.midY - size.height / 2,
             width: size.width, height: size.height
         )
-        if let source {
-            // Cascade the title bars, even when the source has been resized.
-            frame.origin = CGPoint(x: source.minX + step, y: source.maxY - step - size.height)
-            if frame.maxX > visible.maxX { frame.origin.x = visible.minX + step }
-            if frame.minY < visible.minY { frame.origin.y = visible.maxY - size.height - step }
-        }
         var placement = Self(frame: frame, displayID: display.id, displayVisibleFrame: visible)
         placement.frame = placement.restoredFrame(on: [display])
         return placement

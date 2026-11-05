@@ -101,7 +101,7 @@ final class HomePositionTests: XCTestCase {
         try restored.flush()
     }
 
-    func testMenuCapturesSelectedNoteAndHomeOnlyAppliesWithoutVisibleSource() throws {
+    func testMenuCapturesSelectedNoteAndHomeDoesNotOverrideFittingCascade() throws {
         let (coordinator, _) = try makeCoordinator()
         let id = try XCTUnwrap(coordinator.session.activeNoteID)
         let source = try XCTUnwrap(coordinator.controllers[id]?.window as? NotePanel)
@@ -161,5 +161,36 @@ final class HomePositionTests: XCTestCase {
         XCTAssertEqual(coordinator.session.newNoteHome, home)
         menu.update()
         XCTAssertFalse(try XCTUnwrap(menu.item(withTitle: entry.title)).isEnabled)
+    }
+
+    func testPlusAndNewNoteCommandUseHomeWhenRightEdgeCascadeDoesNotFit() throws {
+        let (coordinator, directory) = try makeCoordinator()
+        let id = try XCTUnwrap(coordinator.session.activeNoteID)
+        let source = try XCTUnwrap(coordinator.controllers[id]?.window as? NotePanel)
+        let visible = try XCTUnwrap(source.screen?.visibleFrame)
+        let homeFrame = CGRect(x: visible.minX + 70, y: visible.maxY - 290, width: 280, height: 220)
+        source.setFrame(homeFrame, display: true)
+        coordinator.usePositionForNewNotes(of: id)
+        let home = coordinator.session.newNoteHome
+
+        coordinator.createNote()
+        let edgeFrame = CGRect(x: visible.maxX - 206, y: visible.maxY - 320, width: 200, height: 220)
+        source.setFrame(edgeFrame, display: true)
+        XCTAssertFalse(source.isKeyWindow)
+        source.newNoteButton.performClick(nil)
+        let plusID = try XCTUnwrap(coordinator.session.activeNoteID)
+        XCTAssertEqual(coordinator.controllers[plusID]?.window?.frame, homeFrame)
+
+        coordinator.showNote(id)
+        coordinator.createNote()
+        let commandID = try XCTUnwrap(coordinator.session.activeNoteID)
+        XCTAssertEqual(coordinator.controllers[commandID]?.window?.frame, homeFrame)
+        XCTAssertEqual(source.frame, edgeFrame)
+        XCTAssertEqual(coordinator.session.newNoteHome, home)
+        try coordinator.flush()
+        let saved = try SessionFile(directory: directory).load().session
+        XCTAssertEqual(saved.notes.first { $0.id == plusID }?.placement.frame, homeFrame)
+        XCTAssertEqual(saved.notes.first { $0.id == commandID }?.placement.frame, homeFrame)
+        XCTAssertEqual(saved.newNoteHome, home)
     }
 }

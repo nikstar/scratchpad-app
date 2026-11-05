@@ -66,12 +66,8 @@ final class NoteCoordinator: NSObject {
             id: screen?.displayID ?? 0,
             visibleFrame: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1200, height: 800)
         )
-        let placement: WindowPlacement
-        if source == nil, let home = session.newNoteHome {
-            placement = home.placement(on: NSScreen.noteDisplays, fallback: display)
-        } else {
-            placement = WindowPlacement.newNote(relativeTo: source?.frame, on: display)
-        }
+        let home = session.newNoteHome?.placement(on: NSScreen.noteDisplays, fallback: display)
+        let placement = WindowPlacement.newNote(relativeTo: source?.frame, on: display, fallback: home)
         let note = Note(placement: placement)
         session.notes.append(note)
         session.windowOrder.append(note.id)
